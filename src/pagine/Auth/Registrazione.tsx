@@ -36,7 +36,7 @@ export default function Registrazione() {
       if (error) throw error;
 
       if (data.session) {
-        navigate('/');
+        navigate('/dashboard');
       } else if (data.user) {
         setSuccessMessage('Registrazione avvenuta con successo! Controlla la tua email per confermare l\'account.');
       }

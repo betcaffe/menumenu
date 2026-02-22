@@ -4,6 +4,7 @@ import DisegnaRistorante from './pagine/DisegnaRistorante';
 import GestioneOrdini from './pagine/GestioneOrdini';
 import GestioneMenu from './pagine/GestioneMenu';
 import Home from './pagine/Home';
+import Dashboard from './pagine/Dashboard';
 import Login from './pagine/Auth/Login';
 import Registrazione from './pagine/Auth/Registrazione';
 
@@ -14,6 +15,7 @@ function App() {
         <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/login" element={<Login />} />
             <Route path="/registrazione" element={<Registrazione />} />
             <Route path="/disegna" element={<DisegnaRistorante />} />
