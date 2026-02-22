@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Stage, Layer, Rect, Group } from 'react-konva';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ChefHat, Plus, Trash2, Save, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, ChefHat, Plus, Trash2, ShoppingCart } from 'lucide-react';
 import ElementoCanvas from '../DisegnaRistorante/ElementoCanvas';
 import { Elemento } from '../DisegnaRistorante/types';
 import { MenuItem, MenuCategory, CATEGORIES, Order, INITIAL_MENU } from '../GestioneMenu/types';
@@ -83,8 +83,8 @@ export default function GestioneOrdini() {
                 elementi.forEach(el => {
                     minX = Math.min(minX, el.x);
                     minY = Math.min(minY, el.y);
-                    maxX = Math.max(maxX, el.x + el.width);
-                    maxY = Math.max(maxY, el.y + el.height);
+                    maxX = Math.max(maxX, el.x + (el.width || 0));
+                    maxY = Math.max(maxY, el.y + (el.height || 0));
                 });
     
                 const contentWidth = maxX - minX;

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { LayoutTemplate, ArrowLeft, BrickWall, Square, RotateCw, Trash2, Save, PenTool, Menu } from 'lucide-react';
+import { LayoutTemplate, ArrowLeft, RotateCw, Trash2, Save, Menu } from 'lucide-react';
 import Bottone from '../../componenti/Bottone';
 
 interface StrumentiProps {

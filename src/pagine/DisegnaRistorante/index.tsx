@@ -63,15 +63,15 @@ export default function DisegnaRistorante() {
                 elementi.forEach(el => {
                     minX = Math.min(minX, el.x);
                     minY = Math.min(minY, el.y);
-                    maxX = Math.max(maxX, el.x + el.width);
-                    maxY = Math.max(maxY, el.y + el.height);
+                    maxX = Math.max(maxX, el.x + (el.width || 0));
+                    maxY = Math.max(maxY, el.y + (el.height || 0));
                 });
     
-                const contentWidth = maxX - minX;
                 const contentHeight = maxY - minY;
+                const contentBottom = maxY + 20;
+                
                 const PADDING = 20;
                 const contentRight = maxX + PADDING;
-                const contentBottom = maxY + PADDING;
                 
                 // Calcola scale per far entrare tutto (basato su origine 0,0)
                 const scaleX = width / contentRight;
@@ -302,7 +302,6 @@ export default function DisegnaRistorante() {
             const ry = room.y;
             const rw = room.width || 0;
             const rh = room.height || 0;
-            const stroke = GRID_SIZE; // Assumed stroke width
             
             // Wall centers
             const walls = [
