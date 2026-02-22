@@ -250,10 +250,6 @@ export default function GestioneOrdini() {
   const currentTotal = currentOrder?.items.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
   const selectedTableLabel = elementi.find(e => e.id === selectedTableId)?.label || 'Tavolo';
 
-  const filteredMenuItems = activeCategory 
-    ? menuItems.filter(item => item.category === activeCategory && item.available)
-    : [];
-
   // Filter only table elements for the list
   const tables = elementi.filter(el => el.type === 'rect');
 

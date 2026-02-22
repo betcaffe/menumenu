@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ChefHat, Plus, Edit2, Trash2, X, ChevronDown, ChevronRight, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, ChefHat, Plus, Edit2, Trash2, X } from 'lucide-react';
 import Bottone from '../../componenti/Bottone';
 import { MenuItem, MenuCategory, CATEGORIES, INITIAL_MENU } from './types';
 
