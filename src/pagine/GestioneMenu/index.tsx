@@ -2,35 +2,56 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ChefHat, Plus, Edit2, Trash2, X } from 'lucide-react';
 import Bottone from '../../componenti/Bottone';
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../supabaseClient';
 import { MenuItem, MenuCategory, CATEGORIES, INITIAL_MENU } from './types';
 
 export default function GestioneMenu() {
+  const { user } = useAuth();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<MenuCategory>('Antipasti');
+  const [restaurantId, setRestaurantId] = useState<string | null>(null);
 
-  // Load menu from local storage on mount
+  // Load menu from Supabase on mount
   useEffect(() => {
-    const savedMenu = localStorage.getItem('menu.data');
-    if (savedMenu) {
-      try {
-        setMenuItems(JSON.parse(savedMenu));
-      } catch (e) {
-        console.error("Failed to load menu", e);
-        setMenuItems(INITIAL_MENU);
-      }
-    } else {
-      setMenuItems(INITIAL_MENU);
-    }
-  }, []);
+    if (!user) return;
 
-  // Save menu whenever it changes
+    const loadData = async () => {
+        // 1. Get Restaurant ID
+        const { data: restaurant, error } = await supabase
+            .from('restaurants')
+            .select('id')
+            .eq('user_id', user.id)
+            .single();
+            
+        if (restaurant) {
+            setRestaurantId(restaurant.id);
+            
+            // 2. Get Menu Items
+            const { data: items, error: menuError } = await supabase
+                .from('menu_items')
+                .select('*')
+                .eq('restaurant_id', restaurant.id);
+                
+            if (items) {
+                setMenuItems(items);
+            }
+        }
+    };
+    
+    loadData();
+  }, [user]);
+
+  // Save menu whenever it changes - REMOVED (Handled in save/delete)
+  /*
   useEffect(() => {
     if (menuItems.length > 0) {
       localStorage.setItem('menu.data', JSON.stringify(menuItems));
     }
   }, [menuItems]);
+  */
 
   const handleAddItem = () => {
     setEditingItem({
@@ -49,27 +70,101 @@ export default function GestioneMenu() {
     setIsModalOpen(true);
   };
 
-  const handleDeleteItem = (id: string) => {
+  const handleDeleteItem = async (id: string) => {
     if (confirm('Sei sicuro di voler eliminare questo piatto?')) {
+      // Optimistic update
+      const previousItems = [...menuItems];
       setMenuItems(prev => prev.filter(item => item.id !== id));
+
+      if (!id.startsWith('item-')) { // Only delete from DB if it's not a temp ID
+          const { error } = await supabase
+            .from('menu_items')
+            .delete()
+            .eq('id', id);
+            
+          if (error) {
+              console.error('Error deleting item:', error);
+              alert('Errore durante l\'eliminazione');
+              setMenuItems(previousItems); // Rollback
+          }
+      }
     }
   };
 
-  const handleSaveItem = () => {
+  const handleSaveItem = async () => {
+    if (!user) return;
     if (!editingItem || !editingItem.name) return;
 
-    setMenuItems(prev => {
-      const existingIndex = prev.findIndex(i => i.id === editingItem.id);
-      if (existingIndex >= 0) {
-        const updated = [...prev];
-        updated[existingIndex] = editingItem;
-        return updated;
-      } else {
-        return [...prev, editingItem];
-      }
-    });
-    setIsModalOpen(false);
-    setEditingItem(null);
+    let currentRestaurantId = restaurantId;
+
+    // Ensure restaurant exists
+    if (!currentRestaurantId) {
+        // Create restaurant
+        const { data: newRest, error: createError } = await supabase
+            .from('restaurants')
+            .insert([{ user_id: user.id, name: 'Il mio Ristorante' }])
+            .select()
+            .single();
+            
+        if (createError) {
+            console.error('Error creating restaurant:', createError);
+            alert('Errore nella creazione del ristorante. Riprova.');
+            return;
+        }
+        currentRestaurantId = newRest.id;
+        setRestaurantId(newRest.id);
+    }
+
+    const itemData = {
+        restaurant_id: currentRestaurantId,
+        name: editingItem.name,
+        description: editingItem.description,
+        price: editingItem.price,
+        category: editingItem.category,
+        available: editingItem.available,
+        // image_url: editingItem.image_url 
+    };
+
+    try {
+        if (editingItem.id && !editingItem.id.startsWith('item-')) {
+            // Update
+            const { error, data } = await supabase
+                .from('menu_items')
+                .update(itemData)
+                .eq('id', editingItem.id)
+                .select()
+                .single();
+                
+            if (error) throw error;
+            
+            if (data) {
+                setMenuItems(prev => prev.map(i => i.id === data.id ? data : i));
+            }
+        } else {
+            // Insert
+            const { error, data } = await supabase
+                .from('menu_items')
+                .insert([itemData])
+                .select()
+                .single();
+                
+            if (error) throw error;
+
+            if (data) {
+                setMenuItems(prev => {
+                    // Remove temp item if it was added to list (it wasn't yet)
+                    // But we are in modal, so we just append
+                     return [...prev, data];
+                });
+            }
+        }
+        
+        setIsModalOpen(false);
+        setEditingItem(null);
+    } catch (e) {
+        console.error('Error saving item:', e);
+        alert('Errore nel salvataggio del piatto');
+    }
   };
 
   const filteredItems = menuItems.filter(item => item.category === activeCategory);

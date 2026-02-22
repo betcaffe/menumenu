@@ -6,8 +6,11 @@ import ElementoCanvas from '../DisegnaRistorante/ElementoCanvas';
 import { Elemento } from '../DisegnaRistorante/types';
 import { MenuItem, MenuCategory, CATEGORIES, Order, INITIAL_MENU } from '../GestioneMenu/types';
 import Bottone from '../../componenti/Bottone';
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../supabaseClient';
 
 export default function GestioneOrdini() {
+  const { user } = useAuth();
   const [elementi, setElementi] = useState<Elemento[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -17,51 +20,76 @@ export default function GestioneOrdini() {
   const [contentOffset, setContentOffset] = useState({ x: 0, y: 0 });
   const [scale, setScale] = useState(1);
   const [isLayoutReady, setIsLayoutReady] = useState(false);
+  const [restaurantId, setRestaurantId] = useState<string | null>(null);
   
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Load Data
+  // Load Data from Supabase
   useEffect(() => {
-    // Layout
-    const savedLayout = localStorage.getItem('layout.locale');
-    if (savedLayout) {
-      try {
-        const parsed = JSON.parse(savedLayout);
-        if (parsed.elementi) setElementi(parsed.elementi);
-      } catch (e) {
-        console.error("Failed to load layout", e);
-      }
-    }
+    if (!user) return;
 
-    // Menu
-    const savedMenu = localStorage.getItem('menu.data');
-    if (savedMenu) {
-      try {
-        setMenuItems(JSON.parse(savedMenu));
-      } catch (e) {
-        setMenuItems(INITIAL_MENU);
-      }
-    } else {
-      setMenuItems(INITIAL_MENU);
-    }
+    const loadData = async () => {
+        const { data: restaurant } = await supabase
+            .from('restaurants')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
 
-    // Orders
-    const savedOrders = localStorage.getItem('orders.data');
-    if (savedOrders) {
-      try {
-        setOrders(JSON.parse(savedOrders));
-      } catch (e) {
-        console.error("Failed to load orders", e);
-      }
-    }
-  }, []);
+        if (restaurant) {
+            setRestaurantId(restaurant.id);
+            
+            // Layout
+            if (restaurant.layout) {
+                const parsed = restaurant.layout as any;
+                if (parsed.elementi) setElementi(parsed.elementi);
+            }
 
-  // Save Orders
+            // Menu
+            const { data: menu } = await supabase
+                .from('menu_items')
+                .select('*')
+                .eq('restaurant_id', restaurant.id);
+            if (menu) setMenuItems(menu);
+
+            // Active Orders
+            const { data: activeOrders } = await supabase
+                .from('orders')
+                .select(`
+                    *,
+                    order_items (*)
+                `)
+                .eq('restaurant_id', restaurant.id)
+                .in('status', ['active']); 
+                
+            if (activeOrders) {
+                const mappedOrders: Order[] = activeOrders.map((o: any) => ({
+                    id: o.id,
+                    tableId: o.table_id,
+                    status: o.status,
+                    timestamp: new Date(o.created_at).getTime(),
+                    items: (o.order_items || []).map((i: any) => ({
+                        menuItemId: i.menu_item_id,
+                        quantity: i.quantity,
+                        name: i.name,
+                        price: i.price
+                    }))
+                }));
+                setOrders(mappedOrders);
+            }
+        }
+    };
+    
+    loadData();
+  }, [user]);
+
+  // Save Orders - REMOVED (Handled via DB calls)
+  /*
   useEffect(() => {
     if (orders.length > 0) {
       localStorage.setItem('orders.data', JSON.stringify(orders));
     }
   }, [orders]);
+  */
 
   // Handle Resize and Centering
   useEffect(() => {
@@ -155,94 +183,191 @@ export default function GestioneOrdini() {
     }
   };
 
-  const handleAddToOrder = (item: MenuItem) => {
-    if (!selectedTableId) return;
+  const handleAddToOrder = async (item: MenuItem) => {
+    if (!selectedTableId || !restaurantId) return;
 
+    let orderId: string;
+    let newOrderCreated = false;
+
+    // 1. Check local state for active order
+    const existingOrderIndex = orders.findIndex(o => o.tableId === selectedTableId && o.status === 'active');
+    
+    // Optimistic Update
     setOrders(prev => {
-      const existingOrderIndex = prev.findIndex(o => o.tableId === selectedTableId && o.status === 'active');
       let newOrders = [...prev];
-
       if (existingOrderIndex >= 0) {
-        // Update existing order
+        // Update existing
         const order = { ...newOrders[existingOrderIndex] };
         const itemIndex = order.items.findIndex(i => i.menuItemId === item.id);
-        
         if (itemIndex >= 0) {
-          // Increment quantity
-          const updatedItems = [...order.items];
-          updatedItems[itemIndex] = {
-            ...updatedItems[itemIndex],
-            quantity: updatedItems[itemIndex].quantity + 1
-          };
-          order.items = updatedItems;
+            order.items[itemIndex] = { ...order.items[itemIndex], quantity: order.items[itemIndex].quantity + 1 };
         } else {
-          // Add new item
-          order.items = [...order.items, {
-            menuItemId: item.id,
-            name: item.name,
-            price: item.price,
-            quantity: 1
-          }];
+            order.items.push({ menuItemId: item.id, name: item.name, price: item.price, quantity: 1 });
         }
         newOrders[existingOrderIndex] = order;
       } else {
-        // Create new order
+        // Create new
         newOrders.push({
-          tableId: selectedTableId,
-          status: 'active',
-          timestamp: Date.now(),
-          items: [{
-            menuItemId: item.id,
-            name: item.name,
-            price: item.price,
-            quantity: 1
-          }]
+            tableId: selectedTableId,
+            status: 'active',
+            timestamp: Date.now(),
+            items: [{ menuItemId: item.id, name: item.name, price: item.price, quantity: 1 }]
         });
       }
       return newOrders;
     });
+
+    // 2. DB Interaction
+    try {
+        if (existingOrderIndex >= 0 && orders[existingOrderIndex].id) {
+            orderId = orders[existingOrderIndex].id!;
+        } else {
+            // Create Order in DB
+            const { data: newOrder, error } = await supabase
+                .from('orders')
+                .insert([{ 
+                    restaurant_id: restaurantId, 
+                    table_id: selectedTableId,
+                    status: 'active'
+                }])
+                .select()
+                .single();
+                
+            if (error) throw error;
+            orderId = newOrder.id;
+            newOrderCreated = true;
+        }
+
+        // 3. Add/Update Item in DB
+        // Check if item exists in order
+        const { data: existingItems } = await supabase
+            .from('order_items')
+            .select('*')
+            .eq('order_id', orderId)
+            .eq('menu_item_id', item.id);
+            
+        if (existingItems && existingItems.length > 0) {
+            const existingItem = existingItems[0];
+            await supabase
+                .from('order_items')
+                .update({ quantity: existingItem.quantity + 1 })
+                .eq('id', existingItem.id);
+        } else {
+            await supabase
+                .from('order_items')
+                .insert([{
+                    order_id: orderId,
+                    menu_item_id: item.id,
+                    name: item.name,
+                    price: item.price,
+                    quantity: 1
+                }]);
+        }
+
+        // If we created a new order, update the local state with the ID
+        if (newOrderCreated) {
+            setOrders(prev => prev.map(o => o.tableId === selectedTableId && !o.id ? { ...o, id: orderId } : o));
+        }
+
+    } catch (e) {
+        console.error("Error adding to order:", e);
+        // Revert optimistic update? Or just alert.
+        alert("Errore nell'aggiornamento dell'ordine");
+    }
   };
 
-  const handleRemoveFromOrder = (menuItemId: string) => {
-    if (!selectedTableId) return;
+  const handleRemoveFromOrder = async (menuItemId: string) => {
+    if (!selectedTableId || !restaurantId) return;
     
-    setOrders(prev => {
-      const existingOrderIndex = prev.findIndex(o => o.tableId === selectedTableId && o.status === 'active');
-      if (existingOrderIndex === -1) return prev;
+    const orderIndex = orders.findIndex(o => o.tableId === selectedTableId && o.status === 'active');
+    if (orderIndex === -1) return;
 
-      let newOrders = [...prev];
-      const order = { ...newOrders[existingOrderIndex] };
-      const itemIndex = order.items.findIndex(i => i.menuItemId === menuItemId);
+    const order = orders[orderIndex];
+    if (!order.id) return; // Should have ID by now
+
+    // Optimistic Update
+    setOrders(prev => {
+      const newOrders = [...prev];
+      const currentOrder = { ...newOrders[orderIndex] };
+      const itemIndex = currentOrder.items.findIndex(i => i.menuItemId === menuItemId);
       
       if (itemIndex >= 0) {
-        if (order.items[itemIndex].quantity > 1) {
-           const updatedItems = [...order.items];
-           updatedItems[itemIndex] = {
-             ...updatedItems[itemIndex],
-             quantity: updatedItems[itemIndex].quantity - 1
-           };
-           order.items = updatedItems;
-        } else {
-           order.items = order.items.filter(i => i.menuItemId !== menuItemId);
-        }
+         if (currentOrder.items[itemIndex].quantity > 1) {
+             currentOrder.items[itemIndex].quantity -= 1;
+         } else {
+             currentOrder.items.splice(itemIndex, 1);
+         }
       }
       
-      // If empty, remove order or keep empty? Let's keep empty but status might change effectively
-      if (order.items.length === 0) {
-        newOrders.splice(existingOrderIndex, 1);
+      if (currentOrder.items.length === 0) {
+          newOrders.splice(orderIndex, 1);
       } else {
-        newOrders[existingOrderIndex] = order;
+          newOrders[orderIndex] = currentOrder;
       }
-      
       return newOrders;
     });
+
+    // DB Interaction
+    try {
+        const { data: existingItems } = await supabase
+            .from('order_items')
+            .select('*')
+            .eq('order_id', order.id)
+            .eq('menu_item_id', menuItemId)
+            .single();
+            
+        if (existingItems) {
+            if (existingItems.quantity > 1) {
+                await supabase
+                    .from('order_items')
+                    .update({ quantity: existingItems.quantity - 1 })
+                    .eq('id', existingItems.id);
+            } else {
+                await supabase
+                    .from('order_items')
+                    .delete()
+                    .eq('id', existingItems.id);
+                    
+                // Check if order is empty now
+                const { count } = await supabase
+                    .from('order_items')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('order_id', order.id);
+                    
+                if (count === 0) {
+                    await supabase
+                        .from('orders')
+                        .delete()
+                        .eq('id', order.id);
+                }
+            }
+        }
+    } catch (e) {
+        console.error("Error removing from order:", e);
+    }
   };
 
-  const handleCloseOrder = () => {
-      if (!selectedTableId) return;
+  const handleCloseOrder = async () => {
+      if (!selectedTableId || !restaurantId) return;
+      
+      const order = orders.find(o => o.tableId === selectedTableId && o.status === 'active');
+      if (!order || !order.id) return;
+
       if (confirm('Chiudere il conto e liberare il tavolo?')) {
+          // Optimistic
           setOrders(prev => prev.filter(o => o.tableId !== selectedTableId || o.status !== 'active'));
           setSelectedTableId(null);
+
+          // DB
+          try {
+              await supabase
+                  .from('orders')
+                  .update({ status: 'completed' })
+                  .eq('id', order.id);
+          } catch (e) {
+              console.error("Error closing order:", e);
+              alert("Errore nella chiusura dell'ordine");
+          }
       }
   };
 

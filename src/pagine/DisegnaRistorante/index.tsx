@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Stage, Layer, Rect, Transformer, Group } from 'react-konva';
 import Konva from 'konva';
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../supabaseClient';
 import { Elemento, GRID_SIZE } from './types';
 import Strumenti from './Strumenti';
 import Sidebar from './Sidebar';
@@ -8,6 +10,7 @@ import Griglia from './Griglia';
 import ElementoCanvas from './ElementoCanvas';
 
 export default function DisegnaRistorante() {
+  const { user } = useAuth();
   const [elementi, setElementi] = useState<Elemento[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [stageSize, setStageSize] = useState({ width: 800, height: 2000 });
@@ -127,32 +130,72 @@ export default function DisegnaRistorante() {
     };
   }, [elementi]); // Re-run when elements change
 
-  // Load layout from local storage on mount
+  // Load layout from Supabase on mount
   useEffect(() => {
-    const savedLayout = localStorage.getItem('layout.locale');
-    if (savedLayout) {
+    if (!user) return;
+
+    const loadLayout = async () => {
       try {
-        const parsed = JSON.parse(savedLayout);
-        if (parsed.elementi && parsed.roomDimensions) {
-          setElementi(parsed.elementi);
-          setRoomDimensions(parsed.roomDimensions);
-          // Also restore scale if saved, or recalculate? 
-          // Recalculating scale based on room dimensions is safer to adapt to current screen
+        const { data, error } = await supabase
+          .from('restaurants')
+          .select('layout')
+          .eq('user_id', user.id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+           console.error("Error loading layout:", error);
+           return;
+        }
+
+        if (data?.layout) {
+          // Supabase returns JSONB as object
+          const parsed = data.layout as any; 
+          if (parsed.elementi && parsed.roomDimensions) {
+            setElementi(parsed.elementi);
+            setRoomDimensions(parsed.roomDimensions);
+          }
         }
       } catch (e) {
         console.error("Failed to load layout", e);
       }
-    }
-  }, []);
+    };
 
-  const salvaLayout = () => {
+    loadLayout();
+  }, [user]);
+
+  const salvaLayout = async () => {
+    if (!user) {
+        alert('Devi essere loggato per salvare.');
+        return;
+    }
+
     const layoutData = {
       elementi,
       roomDimensions,
       timestamp: Date.now()
     };
-    localStorage.setItem('layout.locale', JSON.stringify(layoutData));
-    alert('Layout salvato in locale!');
+
+    try {
+        // Upsert restaurant based on user_id
+        // We assume one restaurant per user for now
+        const { error } = await supabase
+            .from('restaurants')
+            .upsert({ 
+                user_id: user.id, 
+                layout: layoutData,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id' });
+
+        if (error) {
+            console.error('Error saving layout:', error);
+            alert('Errore nel salvataggio del layout.');
+        } else {
+            alert('Layout salvato su Supabase!');
+        }
+    } catch (e) {
+        console.error('Exception saving layout:', e);
+        alert('Errore imprevisto nel salvataggio.');
+    }
   };
 
   const aggiungiElemento = (type: 'rect' | 'wall' | 'door', customProps?: { width?: number, height?: number, label?: string }) => {

@@ -19,6 +19,7 @@ export interface OrderItem {
 }
 
 export interface Order {
+  id?: string; // Database ID
   tableId: string;
   items: OrderItem[];
   status: 'active' | 'completed';
