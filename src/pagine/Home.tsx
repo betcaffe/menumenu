@@ -1,12 +1,36 @@
 import { Link } from 'react-router-dom';
-import { ChefHat, PenTool, ClipboardList } from 'lucide-react';
+import { ChefHat, PenTool, ClipboardList, LogOut } from 'lucide-react';
 import Bottone from '../componenti/Bottone';
 import Scheda from '../componenti/Scheda';
+import { useAuth } from '../context/AuthContext';
 
 export default function Home() {
+  const { user, signOut } = useAuth();
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-50">
-      <header className="mb-12 text-center">
+    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-50 relative">
+      <div className="absolute top-4 right-4 flex items-center gap-4">
+        {user ? (
+          <div className="flex items-center gap-4">
+            <span className="text-gray-600 hidden sm:inline">Ciao, {user.email}</span>
+            <Bottone onClick={signOut} variante="fantasma" className="flex items-center gap-2">
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Esci</span>
+            </Bottone>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Link to="/login">
+              <Bottone variante="fantasma">Accedi</Bottone>
+            </Link>
+            <Link to="/registrazione">
+              <Bottone>Registrati</Bottone>
+            </Link>
+          </div>
+        )}
+      </div>
+
+      <header className="mb-12 text-center mt-12 sm:mt-0">
         <h1 className="text-5xl font-bold text-[--secondary] mb-4 flex items-center justify-center gap-3">
           <ChefHat size={48} className="text-[--primary]" />
           MenuMenu
