@@ -4,29 +4,31 @@ import { GRID_SIZE } from './types';
 interface GrigliaProps {
   stageSize: { width: number; height: number };
   visibleRect?: { x: number; y: number; width: number; height: number };
+  gridSize?: number;
 }
 
-export default function Griglia({ stageSize, visibleRect }: GrigliaProps) {
+export default function Griglia({ stageSize, visibleRect, gridSize }: GrigliaProps) {
   const lines = [];
+  const size = gridSize || GRID_SIZE;
 
   // Determine drawing bounds
   // If visibleRect is provided (e.g. when scaled/panned), use it to draw grid everywhere
   // Otherwise default to stageSize starting from 0,0
-  const startX = visibleRect ? Math.floor(visibleRect.x / GRID_SIZE) * GRID_SIZE : 0;
-  const startY = visibleRect ? Math.floor(visibleRect.y / GRID_SIZE) * GRID_SIZE : 0;
+  const startX = visibleRect ? Math.floor(visibleRect.x / size) * size : 0;
+  const startY = visibleRect ? Math.floor(visibleRect.y / size) * size : 0;
   
-  const endX = visibleRect ? Math.ceil((visibleRect.x + visibleRect.width) / GRID_SIZE) * GRID_SIZE : stageSize.width;
-  const endY = visibleRect ? Math.ceil((visibleRect.y + visibleRect.height) / GRID_SIZE) * GRID_SIZE : stageSize.height;
+  const endX = visibleRect ? Math.ceil((visibleRect.x + visibleRect.width) / size) * size : stageSize.width;
+  const endY = visibleRect ? Math.ceil((visibleRect.y + visibleRect.height) / size) * size : stageSize.height;
 
   // Add extra buffer just in case
-  const buffer = GRID_SIZE * 5;
+  const buffer = size * 5;
   const renderStartX = startX - buffer;
   const renderStartY = startY - buffer;
   const renderEndX = endX + buffer;
   const renderEndY = endY + buffer;
 
   // Vertical lines
-  for (let i = renderStartX; i <= renderEndX; i += GRID_SIZE) {
+  for (let i = renderStartX; i <= renderEndX; i += size) {
     lines.push(
       <Line
         key={`v-${i}`}
@@ -39,7 +41,7 @@ export default function Griglia({ stageSize, visibleRect }: GrigliaProps) {
   }
 
   // Horizontal lines
-  for (let i = renderStartY; i <= renderEndY; i += GRID_SIZE) {
+  for (let i = renderStartY; i <= renderEndY; i += size) {
     lines.push(
       <Line
         key={`h-${i}`}

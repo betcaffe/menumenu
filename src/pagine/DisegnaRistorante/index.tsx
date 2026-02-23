@@ -4,10 +4,13 @@ import Konva from 'konva';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../supabaseClient';
 import { Elemento, GRID_SIZE } from './types';
-import Strumenti from './Strumenti';
 import Sidebar from './Sidebar';
 import Griglia from './Griglia';
 import ElementoCanvas from './ElementoCanvas';
+import Navbar from '../../componenti/Navbar';
+import { ArrowLeft, Menu, RotateCw, Trash2, Save, PenTool } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import Bottone from '../../componenti/Bottone';
 
 export default function DisegnaRistorante() {
   const { user } = useAuth();
@@ -69,12 +72,18 @@ export default function DisegnaRistorante() {
                     maxX = Math.max(maxX, el.x + (el.width || 0));
                     maxY = Math.max(maxY, el.y + (el.height || 0));
                 });
+                
+                // Convert everything to pixels for layout calculation
+                const minX_px = minX * pixelsPerMeter;
+                const minY_px = minY * pixelsPerMeter;
+                const maxX_px = maxX * pixelsPerMeter;
+                const maxY_px = maxY * pixelsPerMeter;
     
-                const contentHeight = maxY - minY;
-                const contentBottom = maxY + 20;
+                const contentHeight = maxY_px - minY_px;
+                const contentBottom = maxY_px + 20;
                 
                 const PADDING = 20;
-                const contentRight = maxX + PADDING;
+                const contentRight = maxX_px + PADDING;
                 
                 // Calcola scale per far entrare tutto (basato su origine 0,0)
                 const scaleX = width / contentRight;
@@ -95,8 +104,8 @@ export default function DisegnaRistorante() {
                 // Align left (with small padding) instead of centering horizontally
                 // But keep vertical centering
                 const PADDING_LEFT = 20; // Distance from sidebar
-                const alignedX = PADDING_LEFT - minX * newScale;
-                const centeredY = (height - contentHeight * newScale) / 2 - minY * newScale;
+                const alignedX = PADDING_LEFT - minX_px * newScale;
+                const centeredY = (height - contentHeight * newScale) / 2 - minY_px * newScale;
                 
                 setContentOffset({ 
                     x: alignedX, 
@@ -150,8 +159,28 @@ export default function DisegnaRistorante() {
         if (data?.layout) {
           // Supabase returns JSONB as object
           const parsed = data.layout as any; 
+          
           if (parsed.elementi && parsed.roomDimensions) {
-            setElementi(parsed.elementi);
+            let loadedElements = parsed.elementi as Elemento[];
+            
+            // Normalize legacy data (pixels -> meters)
+            // Assume standard desktop scale (80px = 1m) for legacy conversion
+            const LEGACY_PPM = 80;
+            
+            loadedElements = loadedElements.map((el: any) => {
+                if (el.normalized) return el;
+                return {
+                    ...el,
+                    x: el.x / LEGACY_PPM,
+                    y: el.y / LEGACY_PPM,
+                    width: el.width ? el.width / LEGACY_PPM : undefined,
+                    height: el.height ? el.height / LEGACY_PPM : undefined,
+                    fontSize: el.fontSize ? el.fontSize / LEGACY_PPM : undefined,
+                    normalized: true
+                } as Elemento;
+            });
+
+            setElementi(loadedElements);
             setRoomDimensions(parsed.roomDimensions);
           }
         }
@@ -200,26 +229,29 @@ export default function DisegnaRistorante() {
 
   const aggiungiElemento = (type: 'rect' | 'wall' | 'door', customProps?: { width?: number, height?: number, label?: string }) => {
     const isWall = type === 'wall';
-    // Snap initial position to grid
-    const startX = Math.round(100 / GRID_SIZE) * GRID_SIZE;
-    const startY = Math.round(100 / GRID_SIZE) * GRID_SIZE;
+    // Snap initial position to grid (in meters)
+    // Assume start at 1.25m (approx 100px / 80px)
+    const startX = 2.0; 
+    const startY = 2.0;
     
-    // Default sizes if no custom props
+    // Default sizes in meters
     let width, height;
     
     if (customProps?.width && customProps?.height) {
-        width = customProps.width * pixelsPerMeter;
-        height = customProps.height * pixelsPerMeter;
+        width = customProps.width; // Already in meters
+        height = customProps.height;
     } else {
         // Table: 1x1 meter
-        // Wall: length 1 meter, thickness 1 cell
-        // Door: 1 meter x thickness (will be rotated later if needed)
+        // Wall: length 1 meter, thickness 0.25m (1 cell)
+        // Door: 1 meter x thickness
+        const WALL_THICKNESS = 0.25;
+        
         if (type === 'door') {
-           width = pixelsPerMeter; // 1 meter wide
-           height = GRID_SIZE;     // Wall thickness
+           width = 1.0; // 1 meter wide
+           height = WALL_THICKNESS; 
         } else {
-           width = isWall ? pixelsPerMeter : pixelsPerMeter;
-           height = isWall ? GRID_SIZE : pixelsPerMeter;
+           width = isWall ? 1.0 : 1.0;
+           height = isWall ? WALL_THICKNESS : 1.0;
         }
     }
 
@@ -231,7 +263,8 @@ export default function DisegnaRistorante() {
       width,
       height,
       label: customProps?.label || (isWall ? undefined : (type === 'door' ? 'Porta' : `T${elementi.filter(e => e.type === 'rect').length + 1}`)),
-      rotation: 0
+      rotation: 0,
+      normalized: true
     };
     setElementi([...elementi, newElement]);
   };
@@ -241,18 +274,16 @@ export default function DisegnaRistorante() {
     const containerWidth = containerRef.current?.offsetWidth || window.innerWidth;
     const containerHeight = containerRef.current?.offsetHeight || window.innerHeight;
 
-    // 2. Define margins (3 cells padding on all sides)
-    const margin = 3 * GRID_SIZE;
-    const availableWidth = containerWidth - (margin * 2);
-    const availableHeight = containerHeight - (margin * 2);
+    // 2. Define margins (3 cells padding on all sides approx)
+    const marginPixels = 3 * GRID_SIZE;
+    const availableWidth = containerWidth - (marginPixels * 2);
+    const availableHeight = containerHeight - (marginPixels * 2);
 
     // 3. Calculate required pixels per meter to fit width and height
     const pixelsPerMeterX = availableWidth / roomDimensions.width;
     const pixelsPerMeterY = availableHeight / roomDimensions.height;
 
     // 4. Choose the smaller scale to ensure it fits both dimensions
-    // Default max scale: 4 cells per meter (80px/m) -> Standard view
-    // Min scale: 0.5px/m -> To fit huge rooms
     let newPixelsPerMeter = Math.min(pixelsPerMeterX, pixelsPerMeterY);
     
     // Clamp to a reasonable maximum (standard view) so small rooms don't explode
@@ -261,57 +292,28 @@ export default function DisegnaRistorante() {
     // Update state for future elements
     setCellsPerMeter(newPixelsPerMeter / GRID_SIZE);
 
-    // 5. Create Room Elements
-    const innerW = roomDimensions.width * newPixelsPerMeter;
-    const innerH = roomDimensions.height * newPixelsPerMeter;
-    const wallThickness = GRID_SIZE; // Keep walls visually consistent
+    // 5. Create Room Elements (in METERS)
+    const WALL_THICKNESS = 0.25; // 25cm
     
-    // Start position: 3 cells from top/left
-    const startX = margin; 
-    const startY = margin;
+    // Start position: 1 meter from top/left (arbitrary logical position)
+    const startX = 1.0; 
+    const startY = 1.0;
 
     // Room is a single object (Rect with stroke)
-    // To match inner dimensions, we need to adjust for the stroke which is centered
-    // The Rect x,y should be offset by half thickness
     const roomElement: Elemento = {
         id: `room-${Date.now()}`,
-        x: startX - wallThickness/2,
-        y: startY - wallThickness/2,
+        x: startX - WALL_THICKNESS/2,
+        y: startY - WALL_THICKNESS/2,
         type: 'room',
-        width: innerW + wallThickness,
-        height: innerH + wallThickness,
-        rotation: 0
+        width: roomDimensions.width + WALL_THICKNESS,
+        height: roomDimensions.height + WALL_THICKNESS,
+        rotation: 0,
+        normalized: true
     };
 
-    const labels: Elemento[] = [
-      // Width Label (Top)
-      {
-        id: `label-width-${Date.now()}`,
-        x: startX,
-        y: startY - (wallThickness * 2),
-        type: 'text',
-        label: `${roomDimensions.width}m`,
-        width: innerW,
-        height: GRID_SIZE,
-        rotation: 0,
-        fontSize: 16
-      },
-      // Height Label (Left)
-      {
-        id: `label-height-${Date.now()}`,
-        x: startX - (wallThickness * 2),
-        y: startY + innerH,
-        type: 'text',
-        label: `${roomDimensions.height}m`,
-        width: innerH,
-        height: GRID_SIZE,
-        rotation: -90,
-        fontSize: 16
-      }
-    ];
-
     // Replace existing elements to start fresh with the new scale
-    setElementi([roomElement, ...labels]);
+    // Removed dimension labels as requested
+    setElementi([roomElement]);
   };
 
   const rimuoviSelezionato = () => {
@@ -335,18 +337,30 @@ export default function DisegnaRistorante() {
   };
 
   const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>, id: string) => {
-    // Check if dragging a door
+    // 1. Get current position in pixels (relative to Group)
+    const px = e.target.x();
+    const py = e.target.y();
+    
+    // 2. Convert to meters
+    const mx = px / pixelsPerMeter;
+    const my = py / pixelsPerMeter;
+
+    // 3. Define snap unit in meters
+    // GRID_SIZE is 20px. pixelsPerMeter is e.g. 80px. SNAP = 0.25m.
+    const SNAP = GRID_SIZE / pixelsPerMeter;
+
     const draggedEl = elementi.find(el => el.id === id);
+    
+    // DOOR SNAPPING LOGIC
     if (draggedEl?.type === 'door') {
-        // Find the room element
         const room = elementi.find(el => el.type === 'room');
         if (room) {
+            // Room coordinates are in meters
             const rx = room.x;
             const ry = room.y;
             const rw = room.width || 0;
             const rh = room.height || 0;
             
-            // Wall centers
             const walls = [
                 { name: 'top', y: ry, x1: rx, x2: rx + rw, vertical: false },
                 { name: 'bottom', y: ry + rh, x1: rx, x2: rx + rw, vertical: false },
@@ -354,118 +368,62 @@ export default function DisegnaRistorante() {
                 { name: 'right', x: rx + rw, y1: ry, y2: ry + rh, vertical: true }
             ];
 
-            const ex = e.target.x();
-            const ey = e.target.y();
-            
-            // Find closest wall
             let minDist = Infinity;
             let closestWall = null;
-            let snapX = ex;
-            let snapY = ey;
+            let snapX = mx;
+            let snapY = my;
             let snapRotation = 0;
 
             walls.forEach(wall => {
                 let dist, px, py;
                 if (wall.vertical) {
-                    // Vertical Wall
-                    // Door width (1m) is along the Y axis.
-                    // Visual range: [y, y + doorWidth]
-                    // Valid range: [y1, y2]
-                    // So y must be in [y1, y2 - doorWidth]
-                    
                     const doorLength = draggedEl.width || 0;
                     const validY1 = wall.y1!;
                     const validY2 = wall.y2! - doorLength;
                     
-                    // Projection to find closest wall
-                    py = Math.max(wall.y1!, Math.min(ey, wall.y2!));
+                    py = Math.max(wall.y1!, Math.min(my, wall.y2!));
                     px = wall.x!;
-                    dist = Math.sqrt(Math.pow(ex - px, 2) + Math.pow(ey - py, 2));
+                    dist = Math.sqrt(Math.pow(mx - px, 2) + Math.pow(my - py, 2));
                     
                     if (dist < minDist) {
                         minDist = dist;
                         closestWall = wall;
                         snapX = px; 
-                        // Clamp TOP-LEFT corner Y position
-                        // We use ey (mouse/drag position) as the reference for the top-left
-                        // But wait, if user grabs in middle, ey is top-left?
-                        // Yes, Konva drags by top-left anchor by default.
-                        snapY = Math.max(validY1, Math.min(ey, validY2));
+                        snapY = Math.max(validY1, Math.min(my, validY2));
                         snapRotation = 90;
                     }
                 } else {
-                    // Horizontal Wall
-                    // Door width (1m) is along the X axis.
-                    // Visual range: [x, x + doorWidth]
-                    // Valid range: [x1, x2]
-                    // So x must be in [x1, x2 - doorWidth]
-
                     const doorLength = draggedEl.width || 0;
                     const validX1 = wall.x1!;
                     const validX2 = wall.x2! - doorLength;
 
-                    px = Math.max(wall.x1!, Math.min(ex, wall.x2!));
+                    px = Math.max(wall.x1!, Math.min(mx, wall.x2!));
                     py = wall.y!;
-                    dist = Math.sqrt(Math.pow(ex - px, 2) + Math.pow(ey - py, 2));
+                    dist = Math.sqrt(Math.pow(mx - px, 2) + Math.pow(my - py, 2));
 
                     if (dist < minDist) {
                         minDist = dist;
                         closestWall = wall;
-                        // Clamp TOP-LEFT corner X position
-                        snapX = Math.max(validX1, Math.min(ex, validX2));
+                        snapX = Math.max(validX1, Math.min(mx, validX2));
                         snapY = py; 
                         snapRotation = 0;
                     }
                 }
             });
 
-            // Apply snap
             if (closestWall) {
-                // Apply offsets to align the element thickness with the wall thickness
-                
+                // Apply offsets to align thickness
+                // SNAP is used as wall thickness here (0.25m)
                 if (snapRotation === 90) {
-                     // Vertical Door (90 deg)
-                     // Visual shape: Rectangle rotated 90 deg around (x,y)
-                     // If (x,y) is top-left of unrotated rect:
-                     // Rotated 90 deg clockwise:
-                     // Visual X range: [x - H, x]
-                     // Visual Y range: [y, y + W]
-                     // Wall Center X is at snapX.
-                     // Wall Center Y is variable along the wall.
-                     
-                     // We want Visual Center X to be at Wall Center X (snapX).
-                     // Visual Center X = x - H/2.
-                     // So x - H/2 = snapX => x = snapX + H/2.
-                     
-                     // We want Visual Start Y to be at snapY (clamped position).
-                     // Visual Start Y = y.
-                     // So y = snapY.
-                     
-                     snapX += GRID_SIZE/2;
-                     // snapY is already correct (top edge of the door along the wall)
+                     snapX += SNAP/2;
                 } else {
-                     // Horizontal Door (0 deg)
-                     // Visual shape: Rectangle unrotated
-                     // Visual X range: [x, x + W]
-                     // Visual Y range: [y, y + H]
-                     // Wall Center Y is at snapY.
-                     
-                     // We want Visual Center Y to be at Wall Center Y (snapY).
-                     // Visual Center Y = y + H/2.
-                     // So y + H/2 = snapY => y = snapY - H/2.
-                     
-                     // We want Visual Start X to be at snapX (clamped position).
-                     // Visual Start X = x.
-                     // So x = snapX.
-                     
-                     snapY -= GRID_SIZE/2;
-                     // snapX is already correct (left edge of the door along the wall)
+                     snapY -= SNAP/2;
                 }
             }
             
-            // Update state
-            e.target.x(snapX);
-            e.target.y(snapY);
+            // Update Konva node (back to pixels)
+            e.target.x(snapX * pixelsPerMeter);
+            e.target.y(snapY * pixelsPerMeter);
             e.target.rotation(snapRotation);
 
             setElementi(prev => prev.map(el => {
@@ -478,12 +436,12 @@ export default function DisegnaRistorante() {
         }
     }
 
-    // Standard Snap to grid logic for other elements
-    const x = Math.round(e.target.x() / GRID_SIZE) * GRID_SIZE;
-    const y = Math.round(e.target.y() / GRID_SIZE) * GRID_SIZE;
+    // Standard Snap
+    const x = Math.round(mx / SNAP) * SNAP;
+    const y = Math.round(my / SNAP) * SNAP;
 
-    e.target.x(x);
-    e.target.y(y);
+    e.target.x(x * pixelsPerMeter);
+    e.target.y(y * pixelsPerMeter);
     
     setElementi(prev => prev.map(el => {
       if (el.id === id) {
@@ -502,18 +460,34 @@ export default function DisegnaRistorante() {
     node.scaleX(1);
     node.scaleY(1);
 
-    // Snap new width/height to nearest grid fraction (e.g. half grid for walls)
-    const rawWidth = Math.max(GRID_SIZE / 2, (elementi.find(e => e.id === id)?.width || 0) * scaleX);
-    const rawHeight = Math.max(GRID_SIZE / 2, (elementi.find(e => e.id === id)?.height || 0) * scaleY);
+    // Get original dimensions in meters
+    const originalEl = elementi.find(e => e.id === id);
+    const originalWidth = originalEl?.width || 0;
+    const originalHeight = originalEl?.height || 0;
+    
+    // Calculate new dimensions in meters
+    let newWidth = originalWidth * scaleX;
+    let newHeight = originalHeight * scaleY;
+    
+    // Snap to grid (0.25m)
+    // GRID_SIZE is 20px. pixelsPerMeter is e.g. 80px. SNAP = 0.25m.
+    const SNAP = GRID_SIZE / pixelsPerMeter;
+    
+    newWidth = Math.max(SNAP, Math.round(newWidth / SNAP) * SNAP);
+    newHeight = Math.max(SNAP, Math.round(newHeight / SNAP) * SNAP);
+
+    // Update coordinates (in meters)
+    const newX = node.x() / pixelsPerMeter;
+    const newY = node.y() / pixelsPerMeter;
     
     setElementi(prev => prev.map(el => {
       if (el.id === id) {
         return {
           ...el,
-          x: node.x(),
-          y: node.y(),
-          width: rawWidth,
-          height: rawHeight,
+          x: newX,
+          y: newY,
+          width: newWidth,
+          height: newHeight,
           rotation: node.rotation()
         };
       }
@@ -523,17 +497,56 @@ export default function DisegnaRistorante() {
 
   return (
     <div className="flex h-screen flex-col bg-gray-50">
-      <Strumenti
-        selectedId={selectedId}
-        ruotaSelezionato={ruotaSelezionato}
-        rimuoviSelezionato={rimuoviSelezionato}
-        onSave={salvaLayout}
-        onToggleSidebar={() => setShowSidebar(!showSidebar)}
+      <Navbar 
+        title="Disegna Ristorante"
+        icon={<PenTool className="w-6 h-6 sm:w-8 sm:h-8" />}
+        leftActions={
+           <div className="flex items-center gap-2">
+             <button 
+               onClick={() => setShowSidebar(!showSidebar)}
+               className="p-1 text-gray-600 hover:bg-gray-100 rounded md:hidden"
+               title="Menu Strumenti"
+             >
+               <Menu className="w-6 h-6" />
+             </button>
+             <Link to="/impostazioni" className="text-gray-500 hover:text-[--secondary] p-1">
+                <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+             </Link>
+           </div>
+        }
+        pageActions={
+           <div className="flex items-center gap-2 sm:gap-3">
+             <Bottone 
+              variante="secondario"
+              onClick={ruotaSelezionato}
+              disabled={!selectedId}
+              className="p-2"
+              title="Ruota selezionato"
+            >
+              <RotateCw className="w-5 h-5" />
+            </Bottone>
+
+            <Bottone 
+              variante="pericolo"
+              onClick={rimuoviSelezionato}
+              disabled={!selectedId}
+              className="p-2"
+              title="Elimina selezionato"
+            >
+              <Trash2 className="w-5 h-5" />
+            </Bottone>
+            
+            <Bottone onClick={salvaLayout} className="flex items-center gap-2 shadow-md">
+              <Save className="w-4 h-4" />
+              <span className="hidden sm:inline">Salva</span>
+            </Bottone>
+          </div>
+        }
       />
 
       {/* Mobile Sidebar Overlay */}
       {showSidebar && (
-        <div className="fixed inset-0 z-50 flex md:hidden">
+        <div className="fixed inset-0 z-50 flex md:hidden mt-16 sm:mt-20">
           <div 
             className="absolute inset-0 bg-black/50" 
             onClick={() => setShowSidebar(false)}
@@ -558,10 +571,10 @@ export default function DisegnaRistorante() {
         </div>
       )}
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden mt-16 sm:mt-20">
           {/* Sidebar */}
           <Sidebar
-            className="w-[25%] min-w-[250px] flex-shrink-0 hidden md:flex"
+            className="w-64 min-w-[250px] flex-shrink-0 hidden md:flex"
             roomDimensions={roomDimensions}
             setRoomDimensions={setRoomDimensions}
             creaStanza={creaStanza}
@@ -606,12 +619,20 @@ export default function DisegnaRistorante() {
                             width: stageSize.width / scale,
                             height: stageSize.height / scale
                         }}
+                        gridSize={pixelsPerMeter * 0.25}
                     />
 
                     {elementi.map((el) => (
                     <ElementoCanvas
                         key={el.id}
-                        elemento={el}
+                        elemento={{
+                            ...el,
+                            x: el.x * pixelsPerMeter,
+                            y: el.y * pixelsPerMeter,
+                            width: el.width ? el.width * pixelsPerMeter : undefined,
+                            height: el.height ? el.height * pixelsPerMeter : undefined,
+                            fontSize: el.fontSize ? el.fontSize * pixelsPerMeter : undefined
+                        }}
                         isSelected={selectedId === el.id}
                         onSelect={() => setSelectedId(el.id)}
                         onDragEnd={handleDragEnd}

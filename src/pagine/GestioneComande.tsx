@@ -1,77 +1,50 @@
 import { Link } from 'react-router-dom';
 import { ClipboardList, Utensils, Wine, Layers, ArrowLeft } from 'lucide-react';
-import Bottone from '../componenti/Bottone';
-import Scheda from '../componenti/Scheda';
 import Navbar from '../componenti/Navbar';
+import DashboardCard from '../componenti/DashboardCard';
 
 export default function GestioneComande() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Navbar />
+      <Navbar 
+        leftActions={
+           <Link to="/dashboard" className="text-gray-500 hover:text-[--secondary] p-1">
+             <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+           </Link>
+        }
+      />
 
-      <div className="flex-1 p-4 sm:p-8 pt-32 max-w-7xl mx-auto w-full flex flex-col gap-12">
-        <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <div className="flex items-center gap-4 border-b border-gray-200 pb-4">
-                <Link to="/dashboard">
-                    <Bottone 
-                        variante="fantasma"
-                        className="p-2"
-                    >
-                        <ArrowLeft size={24} />
-                    </Bottone>
-                </Link>
-                <div className="bg-blue-50 p-2 rounded-lg text-blue-600">
-                    <Layers size={24} />
-                </div>
-                <h2 className="text-2xl font-bold text-[--secondary]">Gestione Sala & Comande</h2>
-            </div>
+      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 mt-20 sm:mt-24 w-full max-w-7xl mx-auto gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl w-full">
+                <DashboardCard
+                    title="Gestione Ordini"
+                    description="Visualizza la sala e gestisci gli ordini in tempo reale."
+                    icon={ClipboardList}
+                    to="/gestione-ordini"
+                    buttonText="Apri Sala"
+                    variant="primario"
+                    iconClassName="bg-[--accent] text-[--secondary]"
+                />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <Scheda interattiva className="flex flex-col items-center text-center h-full justify-between border-l-4 border-l-[--primary]">
-                    <div className="flex flex-col items-center">
-                        <div className="bg-[--accent] p-4 rounded-full mb-6">
-                            <ClipboardList size={32} className="text-[--secondary]" />
-                        </div>
-                        <h2 className="text-2xl font-semibold mb-3">Gestione Ordini</h2>
-                        <p className="text-gray-500 mb-6">Visualizza la sala e gestisci gli ordini in tempo reale.</p>
-                    </div>
-                    <Link to="/gestione-ordini" className="w-full mt-auto">
-                        <Bottone pienaLarghezza>
-                            Apri Sala
-                        </Bottone>
-                    </Link>
-                </Scheda>
+                <DashboardCard
+                    title="Cucina"
+                    description="Visualizza le comande per la cucina in tempo reale."
+                    icon={Utensils}
+                    to="/gestione-cucina"
+                    buttonText="Apri Cucina"
+                    variant="primario"
+                    iconClassName="bg-orange-100 text-[--primary]"
+                />
 
-                <Scheda interattiva className="flex flex-col items-center text-center h-full justify-between border-l-4 border-l-orange-500">
-                    <div className="flex flex-col items-center">
-                        <div className="bg-orange-100 p-4 rounded-full mb-6">
-                            <Utensils size={32} className="text-[--primary]" />
-                        </div>
-                        <h2 className="text-2xl font-semibold mb-3">Cucina</h2>
-                        <p className="text-gray-500 mb-6">Visualizza le comande per la cucina in tempo reale.</p>
-                    </div>
-                    <Link to="/gestione-cucina" className="w-full mt-auto">
-                        <Bottone pienaLarghezza variante="primario">
-                            Apri Cucina
-                        </Bottone>
-                    </Link>
-                </Scheda>
-
-                <Scheda interattiva className="flex flex-col items-center text-center h-full justify-between border-l-4 border-l-blue-500">
-                    <div className="flex flex-col items-center">
-                        <div className="bg-blue-100 p-4 rounded-full mb-6">
-                            <Wine size={32} className="text-[--secondary]" />
-                        </div>
-                        <h2 className="text-2xl font-semibold mb-3">Bar</h2>
-                        <p className="text-gray-500 mb-6">Visualizza le comande per il bar in tempo reale.</p>
-                    </div>
-                    <Link to="/gestione-bar" className="w-full mt-auto">
-                        <Bottone pienaLarghezza variante="secondario">
-                            Apri Bar
-                        </Bottone>
-                    </Link>
-                </Scheda>
-            </div>
+                <DashboardCard
+                    title="Bar"
+                    description="Visualizza le comande per il bar in tempo reale."
+                    icon={Wine}
+                    to="/gestione-bar"
+                    buttonText="Apri Bar"
+                    variant="secondario"
+                    iconClassName="bg-blue-100 text-[--secondary]"
+                />
         </div>
       </div>
     </div>

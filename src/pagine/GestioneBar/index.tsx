@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { ChefHat, CheckCircle, Clock, Loader2 } from 'lucide-react';
-import Header from '../../componenti/Header';
+import { ChefHat, CheckCircle, Clock, Loader2, ArrowLeft, Wine } from 'lucide-react';
+import Navbar from '../../componenti/Navbar';
 import Bottone from '../../componenti/Bottone';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../supabaseClient';
 import { OrderItem, MenuCategory } from '../GestioneMenu/types';
+import { Link } from 'react-router-dom';
 
 interface DisplayOrder {
     orderId: string;
@@ -213,20 +214,23 @@ export default function GestioneBar() {
 
     return (
         <div className="flex flex-col h-screen bg-gray-50">
-            {/* Header */}
-            <Header 
-                title="Gestione Bar" 
-                icon={<ChefHat className="w-6 h-6 text-[--secondary]" />}
-                backLink="/dashboard"
-                className="sticky top-0"
-            >
-                <div className="flex items-center gap-1 text-sm text-gray-500">
-                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                    Live Updates
-                </div>
-            </Header>
+            <Navbar 
+                title="Gestione Bar"
+                icon={<Wine className="w-6 h-6 sm:w-8 sm:h-8" />}
+                leftActions={
+                   <Link to="/gestione-comande" className="text-gray-500 hover:text-[--secondary] p-1">
+                     <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+                   </Link>
+                }
+                pageActions={
+                    <div className="flex items-center gap-1 text-sm text-gray-500">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                        <span className="hidden sm:inline">Live Updates</span>
+                    </div>
+                }
+            />
 
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 overflow-y-auto p-4 pt-20 sm:pt-24">
                 {orders.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-gray-400">
                         <CheckCircle className="w-16 h-16 mb-4 opacity-20" />

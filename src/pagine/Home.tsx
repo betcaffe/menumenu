@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
-import { ChefHat, PenTool, ClipboardList, LayoutDashboard } from 'lucide-react';
+import { ChefHat, PenTool, ClipboardList } from 'lucide-react';
 import Bottone from '../componenti/Bottone';
+import Navbar from '../componenti/Navbar';
+import DashboardCard from '../componenti/DashboardCard';
 import { useAuth } from '../context/AuthContext';
 
 export default function Home() {
@@ -9,33 +11,20 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-white">
       {/* Navbar */}
-      <nav className="border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ChefHat className="text-[--primary] h-8 w-8" />
-            <span className="font-bold text-xl text-[--secondary]">MenuMenu</span>
-          </div>
-          <div className="flex items-center gap-4">
-            {user ? (
-              <Link to="/dashboard">
-                <Bottone className="flex items-center gap-2">
-                  <LayoutDashboard className="w-4 h-4" />
-                  Vai alla Dashboard
-                </Bottone>
+      <Navbar 
+        rightActions={
+          !user && (
+            <>
+              <Link to="/login" className="text-gray-600 hover:text-gray-900 font-medium px-4">
+                Accedi
               </Link>
-            ) : (
-              <>
-                <Link to="/login" className="text-gray-600 hover:text-gray-900 font-medium">
-                  Accedi
-                </Link>
-                <Link to="/registrazione">
-                  <Bottone>Inizia Gratis</Bottone>
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </nav>
+              <Link to="/registrazione">
+                <Bottone>Inizia Gratis</Bottone>
+              </Link>
+            </>
+          )
+        }
+      />
 
       {/* Hero Section */}
       <main className="flex-grow">
@@ -81,39 +70,30 @@ export default function Home() {
               <p className="mt-4 text-gray-500">Funzionalità potenti per semplificare il tuo lavoro quotidiano</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-              <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                <div className="bg-orange-100 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
-                  <PenTool className="text-[--primary] w-6 h-6" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Designer Sala</h3>
-                <p className="text-gray-500">
-                  Disegna la piantina del tuo locale con un editor intuitivo. 
-                  Posiziona tavoli, muri e ostacoli per ricreare fedelmente il tuo ambiente.
-                </p>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+              <DashboardCard
+                title="Designer Sala"
+                description="Disegna la piantina del tuo locale con un editor intuitivo. Posiziona tavoli, muri e ostacoli per ricreare fedelmente il tuo ambiente."
+                icon={PenTool}
+                variant="primario"
+                iconClassName="bg-orange-100 text-[--primary]"
+              />
 
-              <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                <div className="bg-blue-100 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
-                  <ChefHat className="text-[--secondary] w-6 h-6" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Menu Digitale</h3>
-                <p className="text-gray-500">
-                  Crea e aggiorna il tuo menu in tempo reale. 
-                  Organizza piatti in categorie, gestisci prezzi e disponibilità con un click.
-                </p>
-              </div>
+              <DashboardCard
+                title="Menu Digitale"
+                description="Crea e aggiorna il tuo menu in tempo reale. Organizza piatti in categorie, gestisci prezzi e disponibilità con un click."
+                icon={ChefHat}
+                variant="secondario"
+                iconClassName="bg-blue-100 text-[--secondary]"
+              />
 
-              <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                <div className="bg-green-100 w-12 h-12 rounded-xl flex items-center justify-center mb-6">
-                  <ClipboardList className="text-green-600 w-6 h-6" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Gestione Ordini</h3>
-                <p className="text-gray-500">
-                  Prendi le comande direttamente al tavolo. 
-                  Il sistema calcola automaticamente i totali e mantiene aggiornato lo stato dei tavoli.
-                </p>
-              </div>
+              <DashboardCard
+                title="Gestione Ordini"
+                description="Prendi le comande direttamente al tavolo. Il sistema calcola automaticamente i totali e mantiene aggiornato lo stato dei tavoli."
+                icon={ClipboardList}
+                variant="primario"
+                iconClassName="bg-green-100 text-green-600"
+              />
             </div>
           </div>
         </div>

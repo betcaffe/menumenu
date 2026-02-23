@@ -8,6 +8,7 @@ export interface Elemento {
   height?: number;
   rotation?: number;
   fontSize?: number;
+  normalized?: boolean;
 }
 
 export const GRID_SIZE = 20;

@@ -1,13 +1,16 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Stage, Layer, Rect, Group } from 'react-konva';
-import { ChefHat, ShoppingCart, Plus, Trash2, X } from 'lucide-react';
+import { ShoppingCart, Plus, Trash2, X, ArrowLeft, ClipboardList } from 'lucide-react';
 import ElementoCanvas from '../DisegnaRistorante/ElementoCanvas';
 import { Elemento } from '../DisegnaRistorante/types';
 import { MenuItem, MenuCategory, CATEGORIES, Order } from '../GestioneMenu/types';
 import Bottone from '../../componenti/Bottone';
-import Header from '../../componenti/Header';
+import Navbar from '../../componenti/Navbar';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../supabaseClient';
+
+import { Sidebar as SidebarContainer, SidebarItem } from '../../componenti/Sidebar';
 
 export default function GestioneOrdini() {
   const { user } = useAuth();
@@ -94,6 +97,22 @@ export default function GestioneOrdini() {
   }, [orders]);
   */
 
+  // Helper to get scaled elements (convert meters to pixels if needed)
+  const getScaledElements = () => {
+    return elementi.map(el => {
+        const isMetric = (el as any).normalized; // Cast because 'normalized' might be missing in type def in this file context if imports are not updated
+        const ppm = isMetric ? 80 : 1;
+        return {
+            ...el,
+            x: el.x * ppm,
+            y: el.y * ppm,
+            width: el.width ? el.width * ppm : undefined,
+            height: el.height ? el.height * ppm : undefined,
+            fontSize: el.fontSize ? el.fontSize * ppm : undefined
+        };
+    });
+  };
+
   // Handle Resize and Centering
   useEffect(() => {
     let animationFrameId: number;
@@ -108,10 +127,12 @@ export default function GestioneOrdini() {
         animationFrameId = requestAnimationFrame(() => {
             setStageSize({ width, height });
     
-            // Calculate content center
-            if (elementi.length > 0) {
+            // Calculate content center using SCALED elements
+            const scaledElements = getScaledElements();
+            
+            if (scaledElements.length > 0) {
                 let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-                elementi.forEach(el => {
+                scaledElements.forEach(el => {
                     minX = Math.min(minX, el.x);
                     minY = Math.min(minY, el.y);
                     maxX = Math.max(maxX, el.x + (el.width || 0));
@@ -132,10 +153,12 @@ export default function GestioneOrdini() {
                 // Fit within available space
                 let newScale = Math.min(scaleX, scaleY);
                 
-                // Limit max scale to 1.2 to avoid excessive zoom on small content
-                // But allow scaling down as much as needed
-                newScale = Math.min(newScale, 1.2);
+                // Limit max scale (zoom)
+                newScale = Math.min(newScale, 1.5);
                 
+                // Prevent too small scale
+                if (newScale < 0.1) newScale = 0.1;
+
                 setScale(newScale);
     
                 const contentCenterX = minX + contentWidth / 2;
@@ -182,7 +205,12 @@ export default function GestioneOrdini() {
   const handleTableSelect = (id: string) => {
     const el = elementi.find(e => e.id === id);
     if (el && el.type === 'rect') {
-      setSelectedTableId(id);
+      // Toggle selection: if already selected, deselect
+      if (selectedTableId === id) {
+        setSelectedTableId(null);
+      } else {
+        setSelectedTableId(id);
+      }
     }
   };
 
@@ -405,105 +433,101 @@ export default function GestioneOrdini() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
-      {/* Header */}
-      <Header 
-        title="Sala & Ordini" 
-        icon={<ChefHat className="w-6 h-6 text-[--primary]" />}
-        backLink="/dashboard"
+      <Navbar 
+        title="Sala & Ordini"
+        icon={<ClipboardList className="w-6 h-6 sm:w-8 sm:h-8" />}
+        leftActions={
+           <Link to="/gestione-comande" className="text-gray-500 hover:text-[--secondary] p-1">
+             <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+           </Link>
+        }
       />
 
-      <div className="flex flex-1 overflow-hidden relative">
-        {/* Left Sidebar: Tables List (25% width) */}
-        <div className="w-[25%] border-r border-gray-200 flex flex-col shadow-lg shrink-0 z-20 bg-white">
-            <div className="p-[min(1.5vw,20px)] border-b border-gray-200 bg-gray-50 flex justify-between items-center h-[8%] min-h-[60px]">
-                <div>
-                    <h2 className="font-bold text-gray-800" style={{ fontSize: 'min(2vw, 24px)' }}>Tavoli</h2>
-                </div>
+      <div className="flex-1 flex overflow-hidden mt-16 sm:mt-20">
+        {/* Left Sidebar: Tables List (Fixed width) */}
+        <SidebarContainer className="w-64 border-r border-gray-200 flex flex-col shadow-lg shrink-0 z-20 bg-white">
+            <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                <h2 className="font-bold text-gray-800 text-lg">Tavoli</h2>
             </div>
-            <div className="flex-1 overflow-y-auto p-[min(1.5vw,20px)]">
-                <div className="flex flex-col gap-[min(1.2vw,16px)]">
-                    {tables.map(table => {
-                        const isOccupied = getTableStroke(table.id) === '#ef4444';
-                        const isSelected = selectedTableId === table.id;
-                        return (
-                            <div key={table.id} className="flex flex-col gap-[min(1vw,12px)]">
-                                <button
-                                    onClick={() => {
-                                        handleTableSelect(table.id);
-                                    }}
-                                    className={`w-full p-[min(1.5vw,20px)] rounded-xl border transition-all flex items-center justify-between ${
-                                        isOccupied 
-                                        ? 'bg-red-50 border-red-200 hover:border-red-400' 
-                                        : 'bg-green-50 border-green-200 hover:border-green-400'
-                                    } ${isSelected ? 'ring-4 ring-[--primary] ring-offset-2' : ''}`}
-                                >
-                                    <span className="font-bold text-gray-700" style={{ fontSize: 'min(1.5vw, 18px)' }}>{table.label || 'Tavolo'}</span>
-                                    <span className={`px-[min(0.8vw,10px)] py-[min(0.4vw,6px)] rounded-full font-medium ${isOccupied ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`} style={{ fontSize: 'min(1.1vw, 14px)' }}>
+            <div className="flex-1 overflow-y-auto">
+                {tables.map(table => {
+                    const isOccupied = getTableStroke(table.id) === '#ef4444';
+                    const isSelected = selectedTableId === table.id;
+                    const statusColor = isOccupied ? 'red' : 'green';
+                    
+                    return (
+                        <React.Fragment key={table.id}>
+                            <SidebarItem
+                                label={table.label || 'Tavolo'}
+                                active={isSelected}
+                                color={statusColor}
+                                onClick={() => handleTableSelect(table.id)}
+                                rightElement={
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                        isOccupied ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                                    }`}>
                                         {isOccupied ? 'Occupato' : 'Libero'}
                                     </span>
-                                </button>
-                                
-                                {/* Categories and Items - Only visible if table is selected */}
-                                {isSelected && (
-                                    <div className="ml-[min(1.5vw,20px)] pl-[min(1.5vw,20px)] border-l-4 border-gray-200 flex flex-col gap-[min(1vw,12px)] animate-in fade-in slide-in-from-top-2 duration-200">
-                                        {CATEGORIES.map(cat => {
-                                            const isCatActive = activeCategory === cat;
-                                            const catItems = menuItems.filter(i => i.category === cat && i.available);
-                                            
-                                            return (
-                                                <div key={cat} className="flex flex-col">
-                                                    <button
-                                                        onClick={() => setActiveCategory(isCatActive ? null : cat)}
-                                                        className={`text-left px-[min(1vw,12px)] py-[min(1vw,12px)] rounded-lg font-medium flex justify-between items-center transition-colors ${
-                                                            isCatActive 
-                                                            ? 'bg-[--primary] text-white shadow-sm' 
-                                                            : 'text-gray-600 hover:bg-gray-100'
-                                                        }`}
-                                                        style={{ fontSize: 'min(1.3vw, 16px)' }}
-                                                    >
-                                                        {cat}
-                                                        <span className={`px-[min(0.6vw,8px)] py-[min(0.2vw,4px)] rounded-full ${isCatActive ? 'bg-white/20' : 'bg-gray-200'}`} style={{ fontSize: 'min(1.1vw, 14px)' }}>
-                                                            {catItems.length}
-                                                        </span>
-                                                    </button>
-                                                    
-                                                    {/* Menu Items for this Category */}
-                                                    {isCatActive && (
-                                                        <div className="mt-[min(0.6vw,8px)] ml-[min(1vw,12px)] flex flex-col gap-[min(0.6vw,8px)] animate-in fade-in slide-in-from-top-1 duration-150">
-                                                            {catItems.length === 0 ? (
-                                                                <p className="text-gray-400 italic p-[min(1vw,12px)]" style={{ fontSize: 'min(1.1vw, 14px)' }}>Nessun piatto</p>
-                                                            ) : (
-                                                                catItems.map(item => (
-                                                                    <button
-                                                                        key={item.id}
-                                                                        onClick={() => handleAddToOrder(item)}
-                                                                        className="text-left p-[min(1vw,12px)] rounded hover:bg-orange-50 hover:text-orange-700 text-gray-600 border border-transparent hover:border-orange-100 transition-all flex justify-between items-center group"
-                                                                        style={{ fontSize: 'min(1.2vw, 15px)' }}
-                                                                    >
-                                                                        <span className="truncate pr-[min(0.8vw,10px)]">{item.name}</span>
-                                                                        <div className="flex items-center gap-[min(0.8vw,10px)]">
-                                                                            <span className="font-semibold">€{item.price.toFixed(2)}</span>
-                                                                            <Plus className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ width: 'min(1vw,14px)', height: 'min(1vw,14px)' }} />
-                                                                        </div>
-                                                                    </button>
-                                                                ))
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
+                                }
+                            />
+                            
+                            {/* Categories and Items - Re-added to preserve functionality */}
+                            {isSelected && (
+                                <div className="pl-4 border-l-4 border-gray-200 flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-200 bg-gray-50/50 p-2">
+                                    {CATEGORIES.map(cat => {
+                                        const isCatActive = activeCategory === cat;
+                                        const catItems = menuItems.filter(i => i.category === cat && i.available);
+                                        
+                                        return (
+                                            <div key={cat} className="flex flex-col">
+                                                <button
+                                                    onClick={() => setActiveCategory(isCatActive ? null : cat)}
+                                                    className={`text-left px-3 py-2 rounded-lg font-medium flex justify-between items-center transition-colors ${
+                                                        isCatActive 
+                                                        ? 'bg-[--primary] text-white shadow-sm' 
+                                                        : 'text-gray-600 hover:bg-gray-100'
+                                                    }`}
+                                                >
+                                                    {cat}
+                                                    <span className={`px-2 py-0.5 rounded-full text-xs ${isCatActive ? 'bg-white/20' : 'bg-gray-200'}`}>
+                                                        {catItems.length}
+                                                    </span>
+                                                </button>
+                                                
+                                                {isCatActive && (
+                                                    <div className="mt-2 ml-3 flex flex-col gap-2 animate-in fade-in slide-in-from-top-1 duration-150">
+                                                        {catItems.length === 0 ? (
+                                                            <p className="text-gray-400 italic px-3 text-sm">Nessun piatto</p>
+                                                        ) : (
+                                                            catItems.map(item => (
+                                                                <button
+                                                                    key={item.id}
+                                                                    onClick={() => handleAddToOrder(item)}
+                                                                    className="text-left p-3 rounded hover:bg-orange-50 hover:text-orange-700 text-gray-600 border border-transparent hover:border-orange-100 transition-all flex justify-between items-center group text-sm"
+                                                                >
+                                                                    <span className="truncate pr-2">{item.name}</span>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-semibold">€{item.price.toFixed(2)}</span>
+                                                                        <Plus className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                                    </div>
+                                                                </button>
+                                                            ))
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </React.Fragment>
+                    );
+                })}
             </div>
-        </div>
+        </SidebarContainer>
 
-        {/* Center: Canvas Area (50% width) */}
-        <div className="w-[50%] overflow-hidden bg-gray-100 relative">
+        {/* Center: Canvas Area (Flex grow) */}
+        <div className="flex-1 overflow-hidden bg-gray-100 relative">
             <div 
                 ref={containerRef}
                 className="w-full h-full"
@@ -528,7 +552,7 @@ export default function GestioneOrdini() {
                             scaleX={scale} 
                             scaleY={scale}
                         >
-                            {elementi.map((el) => {
+                            {getScaledElements().map((el) => {
                                  const isSelected = selectedTableId === el.id;
                                  const fillColor = el.type === 'rect' ? getTableColor(el.id) : undefined;
                                  
@@ -551,56 +575,56 @@ export default function GestioneOrdini() {
             </div>
         </div>
 
-        {/* Right Sidebar: Order Detail (25% width) - Always Visible */}
-        <div className="w-[25%] border-l border-gray-200 flex flex-col shadow-lg shrink-0 z-20 bg-white">
+        {/* Right Sidebar: Order Detail (Fixed width) - Always Visible */}
+        <SidebarContainer className="w-80 border-l border-r-0 border-gray-200 flex flex-col shadow-lg shrink-0 z-20 bg-white">
             {selectedTableId ? (
                 <>
-                    <div className="p-[min(1.5vw,20px)] border-b border-gray-200 bg-gray-50 flex items-center justify-between h-[8%] min-h-[60px]">
+                    <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between min-h-[60px]">
                         <div>
-                            <h2 className="font-bold text-gray-800" style={{ fontSize: 'min(2vw, 24px)' }}>{selectedTableLabel}</h2>
-                            <p className="text-gray-500" style={{ fontSize: 'min(1.2vw, 14px)' }}>
+                            <h2 className="font-bold text-gray-800 text-lg">{selectedTableLabel}</h2>
+                            <p className="text-gray-500 text-sm">
                                 {currentOrder ? 'Occupato' : 'Libero'}
                             </p>
                         </div>
-                        <button onClick={() => setSelectedTableId(null)} className="p-[min(1vw,12px)] bg-white rounded-full shadow-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors border border-gray-200">
-                            <X style={{ width: 'min(2vw, 24px)', height: 'min(2vw, 24px)' }} />
+                        <button onClick={() => setSelectedTableId(null)} className="p-2 bg-white hover:bg-gray-100 rounded-full text-gray-500 hover:text-gray-700 transition-colors border border-gray-200">
+                            <X className="w-5 h-5" />
                         </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-[min(1.5vw,20px)] bg-gray-50/50">
+                    <div className="flex-1 overflow-y-auto bg-white">
                         {!currentOrder || currentOrder.items.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-[min(1.5vw,20px)]">
-                                <div className="w-[8vw] h-[8vw] max-w-[80px] max-h-[80px] bg-gray-100 rounded-full flex items-center justify-center">
-                                    <ShoppingCart className="opacity-20" style={{ width: 'min(4vw, 40px)', height: 'min(4vw, 40px)' }} />
+                            <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-4 p-4">
+                                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center">
+                                    <ShoppingCart className="w-8 h-8 opacity-20" />
                                 </div>
                                 <div className="text-center">
-                                    <p className="font-medium text-gray-600" style={{ fontSize: 'min(1.5vw, 18px)' }}>Nessun ordine attivo</p>
-                                    <p style={{ fontSize: 'min(1.2vw, 14px)' }}>Seleziona i piatti dal menu a sinistra</p>
+                                    <p className="font-medium text-gray-600 text-lg">Nessun ordine attivo</p>
+                                    <p className="text-sm">Seleziona i piatti dal menu a sinistra</p>
                                 </div>
                             </div>
                         ) : (
-                            <div className="space-y-[min(1.5vw,20px)] w-full">
+                            <div className="w-full">
                                 {groupedItems.map((item) => (
-                                    <div key={item.menuItemId} className="flex justify-between items-center p-[min(1.5vw,20px)] bg-white rounded-xl border border-gray-200 shadow-sm hover:border-[--primary] transition-colors group">
-                                        <div className="flex items-center gap-[min(1.5vw,20px)]">
-                                            <div className="w-[3.5vw] h-[3.5vw] max-w-[40px] max-h-[40px] bg-[--primary]/10 rounded-full flex items-center justify-center text-[--primary] font-bold" style={{ fontSize: 'min(1.3vw, 14px)' }}>
+                                    <div key={item.menuItemId} className="flex justify-between items-center p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors group">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 bg-[--primary]/10 rounded flex items-center justify-center text-[--primary] font-bold text-sm">
                                                 {item.quantity}x
                                             </div>
-                                            <div>
-                                                <h4 className="font-bold text-gray-800" style={{ fontSize: 'min(1.5vw, 18px)' }}>{item.name}</h4>
-                                                <p className="text-gray-500" style={{ fontSize: 'min(1.2vw, 14px)' }}>€ {item.price.toFixed(2)} cad.</p>
+                                            <div className="min-w-0">
+                                                <h4 className="font-bold text-gray-800 text-sm truncate max-w-[120px]" title={item.name}>{item.name}</h4>
+                                                <p className="text-gray-500 text-xs">€ {item.price.toFixed(2)}</p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-[min(1.5vw,20px)]">
-                                            <span className="font-bold text-gray-800 text-right" style={{ fontSize: 'min(1.5vw, 18px)' }}>
+                                        <div className="flex items-center gap-3">
+                                            <span className="font-bold text-gray-800 text-sm whitespace-nowrap">
                                                 € {item.totalPrice.toFixed(2)}
                                             </span>
                                             <button 
                                                 onClick={() => handleRemoveFromOrder(item.menuItemId)}
-                                                className="p-[min(1vw,12px)] text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                                                 title="Rimuovi"
                                             >
-                                                <Trash2 style={{ width: 'min(2vw, 20px)', height: 'min(2vw, 20px)' }} />
+                                                <Trash2 className="w-4 h-4" />
                                             </button>
                                         </div>
                                     </div>
@@ -609,37 +633,36 @@ export default function GestioneOrdini() {
                         )}
                     </div>
 
-                    <div className="p-[min(1.5vw,20px)] border-t border-gray-200 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] shrink-0 z-40">
-                        <div className="flex justify-between items-center mb-[min(1.5vw,20px)] w-full">
-                            <span className="text-gray-500 font-medium" style={{ fontSize: 'min(1.5vw, 18px)' }}>Totale Complessivo</span>
-                            <span className="font-bold text-[--primary]" style={{ fontSize: 'min(2.2vw, 28px)' }}>€ {currentTotal.toFixed(2)}</span>
+                    <div className="p-4 border-t border-gray-200 bg-gray-50 shrink-0 z-40">
+                        <div className="flex justify-between items-center mb-4 w-full">
+                            <span className="text-gray-600 font-medium">Totale</span>
+                            <span className="font-bold text-[--primary] text-2xl">€ {currentTotal.toFixed(2)}</span>
                         </div>
-                        <div className="flex gap-[min(1.5vw,20px)] w-full">
+                        <div className="w-full">
                             {currentOrder && currentOrder.items.length > 0 && (
                                 <Bottone 
                                     onClick={handleCloseOrder}
                                     variante="pericolo"
-                                    className="flex-1"
-                                    style={{ fontSize: 'min(1.5vw, 18px)', padding: 'min(1.5vw, 20px)' }}
+                                    className="w-full justify-center"
                                 >
-                                    Chiudi Conto e Libera
+                                    Chiudi Conto
                                 </Bottone>
                             )}
                         </div>
                     </div>
                 </>
             ) : (
-                <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-[min(1.5vw,20px)] p-[min(3vw,40px)]">
-                    <div className="w-[10vw] h-[10vw] max-w-[100px] max-h-[100px] bg-gray-100 rounded-full flex items-center justify-center">
-                        <ShoppingCart className="opacity-20" style={{ width: 'min(5vw, 50px)', height: 'min(5vw, 50px)' }} />
+                <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-4 p-8">
+                    <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center">
+                        <ClipboardList className="w-10 h-10 opacity-20" />
                     </div>
                     <div className="text-center">
-                        <p className="font-medium text-gray-600" style={{ fontSize: 'min(2vw, 24px)' }}>Conto</p>
-                        <p style={{ fontSize: 'min(1.3vw, 16px)' }}>Seleziona un tavolo per visualizzare il conto</p>
+                        <p className="font-medium text-gray-600 text-xl">Conto</p>
+                        <p className="text-sm mt-1">Seleziona un tavolo</p>
                     </div>
                 </div>
             )}
-        </div>
+        </SidebarContainer>
       </div>
     </div>
   );

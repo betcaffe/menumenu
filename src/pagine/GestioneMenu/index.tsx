@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
-import { ChefHat, Plus, Edit2, Trash2, X } from 'lucide-react';
+import { ChefHat, Plus, Edit2, Trash2, X, ArrowLeft, Menu as MenuIcon, ChevronRight } from 'lucide-react';
 import Bottone from '../../componenti/Bottone';
-import Header from '../../componenti/Header';
+import Navbar from '../../componenti/Navbar';
 import Input from '../../componenti/Input';
 import Textarea from '../../componenti/Textarea';
 import Select from '../../componenti/Select';
-import Checkbox from '../../componenti/Checkbox';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../supabaseClient';
 import { MenuItem, MenuCategory, CATEGORIES } from './types';
+import { Sidebar as SidebarContainer, SidebarItem } from '../../componenti/Sidebar';
 
 export default function GestioneMenu() {
   const { user } = useAuth();
@@ -47,15 +48,6 @@ export default function GestioneMenu() {
     
     loadData();
   }, [user]);
-
-  // Save menu whenever it changes - REMOVED (Handled in save/delete)
-  /*
-  useEffect(() => {
-    if (menuItems.length > 0) {
-      localStorage.setItem('menu.data', JSON.stringify(menuItems));
-    }
-  }, [menuItems]);
-  */
 
   const handleAddItem = () => {
     setEditingItem({
@@ -157,8 +149,6 @@ export default function GestioneMenu() {
 
             if (data) {
                 setMenuItems(prev => {
-                    // Remove temp item if it was added to list (it wasn't yet)
-                    // But we are in modal, so we just append
                      return [...prev, data];
                 });
             }
@@ -175,86 +165,123 @@ export default function GestioneMenu() {
   const filteredItems = menuItems.filter(item => item.category === activeCategory);
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
-      {/* Header */}
-      <Header 
-        title="Gestione Menu" 
-        icon={<ChefHat className="w-6 h-6 text-[--primary]" />}
-        backLink="/dashboard"
-      >
-        <Bottone onClick={handleAddItem} className="flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Aggiungi Piatto</span>
-        </Bottone>
-      </Header>
+    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
+      <Navbar 
+        title="Gestione Menu"
+        icon={<ChefHat className="w-6 h-6 sm:w-8 sm:h-8" />}
+        leftActions={
+           <Link to="/impostazioni" className="text-gray-500 hover:text-[--secondary] p-1">
+             <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+           </Link>
+        }
+        pageActions={
+           <Bottone onClick={handleAddItem} className="hidden sm:flex">
+             <Plus className="w-5 h-5 mr-2" />
+             Nuovo Piatto
+           </Bottone>
+        }
+      />
 
-      <div className="flex flex-row flex-1 overflow-hidden">
-        {/* Sidebar Categories */}
-        <div className="w-[30%] min-w-[120px] max-w-[250px] bg-white border-r border-gray-200 overflow-y-auto">
-            <div className="p-2 md:p-4">
-                <h2 className="font-semibold text-gray-500 mb-4 text-xs md:text-sm uppercase tracking-wider hidden md:block">Categorie</h2>
-                <nav className="space-y-1">
-                    {CATEGORIES.map(cat => (
-                        <button
-                            key={cat}
-                            onClick={() => setActiveCategory(cat)}
-                            className={`w-full text-left px-2 py-2 md:px-4 md:py-3 rounded-lg transition-colors flex flex-col md:flex-row md:items-center justify-between gap-1 ${
-                                activeCategory === cat 
-                                ? 'bg-[--primary] text-white font-medium shadow-md' 
-                                : 'text-gray-600 hover:bg-gray-100'
-                            }`}
-                        >
-                            <span className="text-sm md:text-base truncate">{cat}</span>
-                            <span className={`text-[10px] md:text-xs px-1.5 py-0.5 rounded-full w-fit ${activeCategory === cat ? 'bg-white/20' : 'bg-gray-200'}`}>
-                                {menuItems.filter(i => i.category === cat).length}
-                            </span>
-                        </button>
-                    ))}
-                </nav>
+      <div className="flex-1 flex overflow-hidden mt-16 sm:mt-20">
+        {/* Sidebar Categorie */}
+        <SidebarContainer className="w-64 flex-shrink-0 hidden md:flex border-r border-gray-200 z-10">
+            <div className="p-4 bg-orange-50 border-b border-orange-100">
+                <h2 className="font-bold text-gray-800 flex items-center gap-2">
+                    <MenuIcon className="w-5 h-5 text-[--primary]" />
+                    Categorie
+                </h2>
             </div>
+            <div className="flex-1 overflow-y-auto">
+                {CATEGORIES.map(category => (
+                    <SidebarItem 
+                        key={category}
+                        label={category}
+                        active={activeCategory === category}
+                        onClick={() => setActiveCategory(category)}
+                        rightElement={
+                            <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full">
+                                {menuItems.filter(i => i.category === category).length}
+                            </span>
+                        }
+                    />
+                ))}
+            </div>
+        </SidebarContainer>
+
+        {/* Mobile Category Selector (Dropdown style or horizontal scroll backup) */}
+        <div className="md:hidden w-full bg-white border-b border-gray-200 p-2 overflow-x-auto whitespace-nowrap fixed top-16 left-0 right-0 z-20">
+             {CATEGORIES.map(category => (
+                <button
+                    key={category}
+                    onClick={() => setActiveCategory(category)}
+                    className={`px-4 py-2 rounded-full text-sm mr-2 transition-colors ${
+                        activeCategory === category
+                            ? 'bg-[--secondary] text-white'
+                            : 'bg-gray-100 text-gray-600'
+                    }`}
+                >
+                    {category}
+                </button>
+            ))}
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1 overflow-auto p-4 sm:p-8">
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8 w-full relative">
             <div className="max-w-4xl mx-auto">
-                <h2 className="text-2xl font-bold mb-6 text-gray-800">{activeCategory}</h2>
-                
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800">{activeCategory}</h2>
+                    <span className="text-gray-500 text-sm">
+                        {filteredItems.length} piatti
+                    </span>
+                </div>
+
                 {filteredItems.length === 0 ? (
-                    <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
-                        <p className="text-gray-500 mb-4">Nessun piatto in questa categoria</p>
-                        <Bottone variante="secondario" onClick={handleAddItem}>Aggiungi il primo piatto</Bottone>
+                    <div className="text-center py-16 bg-white rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center">
+                        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                            <ChefHat className="w-8 h-8 text-gray-300" />
+                        </div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-1">Nessun piatto in questa categoria</h3>
+                        <p className="text-gray-500 mb-6 max-w-sm">Inizia ad aggiungere i tuoi piatti per creare il menu perfetto per i tuoi clienti.</p>
+                        <Bottone variante="primario" onClick={handleAddItem}>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Aggiungi Piatto
+                        </Bottone>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 gap-4">
                         {filteredItems.map(item => (
-                            <div key={item.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between group hover:border-[--primary] transition-colors">
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-3">
-                                        <h3 className="font-bold text-lg text-gray-800">{item.name}</h3>
-                                        <span className="text-sm font-medium bg-green-100 text-green-800 px-2 py-0.5 rounded">
-                                            € {item.price.toFixed(2)}
-                                        </span>
+                            <div key={item.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between group hover:border-[--primary] transition-all hover:shadow-md">
+                                <div className="flex-1 min-w-0 flex items-center gap-4 pr-4">
+                                    <div className="w-[30%] min-w-[150px] max-w-[250px]">
+                                        <h3 className="font-bold text-gray-800 truncate" title={item.name}>{item.name}</h3>
                                         {!item.available && (
-                                            <span className="text-xs font-medium bg-red-100 text-red-800 px-2 py-0.5 rounded">
+                                            <span className="text-xs font-medium bg-red-100 text-red-800 px-2 py-0.5 rounded-full inline-block mt-1">
                                                 Non disponibile
                                             </span>
                                         )}
                                     </div>
-                                    {item.description && (
-                                        <p className="text-gray-500 text-sm mt-1">{item.description}</p>
-                                    )}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-gray-500 text-sm truncate" title={item.description || "Nessuna descrizione"}>
+                                            {item.description || "Nessuna descrizione"}
+                                        </p>
+                                    </div>
+                                    <div className="w-[80px] text-right flex-shrink-0">
+                                        <span className="text-sm font-bold text-[--primary] bg-orange-50 px-2 py-1 rounded-md whitespace-nowrap">
+                                            € {item.price.toFixed(2)}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex items-center gap-2 border-l border-gray-100 pl-4">
                                     <button 
                                         onClick={() => handleEditItem(item)}
-                                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                                        className="p-2 text-gray-400 hover:text-[--secondary] hover:bg-blue-50 rounded-lg transition-colors"
                                         title="Modifica"
                                     >
                                         <Edit2 className="w-5 h-5" />
                                     </button>
                                     <button 
                                         onClick={() => handleDeleteItem(item.id)}
-                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                         title="Elimina"
                                     >
                                         <Trash2 className="w-5 h-5" />
@@ -264,6 +291,14 @@ export default function GestioneMenu() {
                         ))}
                     </div>
                 )}
+                
+                {/* Mobile Add Button (Floating) */}
+                <button 
+                    onClick={handleAddItem}
+                    className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-[--primary] text-white rounded-full shadow-lg flex items-center justify-center hover:bg-orange-600 transition-colors z-30"
+                >
+                    <Plus className="w-8 h-8" />
+                </button>
             </div>
         </div>
       </div>
@@ -304,35 +339,49 @@ export default function GestioneMenu() {
                             value={editingItem.category}
                             onChange={e => setEditingItem({...editingItem, category: e.target.value as MenuCategory})}
                         >
-                            {CATEGORIES.map(cat => (
-                                <option key={cat} value={cat}>{cat}</option>
+                            {CATEGORIES.map(c => (
+                                <option key={c} value={c}>{c}</option>
                             ))}
                         </Select>
                     </div>
 
-                    <div>
-                        <Textarea 
-                            label="Descrizione (Opzionale)"
-                            value={editingItem.description || ''}
-                            onChange={e => setEditingItem({...editingItem, description: e.target.value})}
-                            placeholder="Ingredienti, allergeni, note..."
-                            className="h-24 resize-none"
-                        />
-                    </div>
+                    <Textarea 
+                        label="Descrizione"
+                        value={editingItem.description || ''}
+                        onChange={e => setEditingItem({...editingItem, description: e.target.value})}
+                        placeholder="Ingredienti e dettagli..."
+                        rows={3}
+                    />
 
-                    <div className="flex items-center gap-2">
-                        <Checkbox 
+                    <div className="flex items-center gap-2 pt-2">
+                        <input 
+                            type="checkbox" 
                             id="available"
-                            label="Disponibile per gli ordini"
                             checked={editingItem.available}
                             onChange={e => setEditingItem({...editingItem, available: e.target.checked})}
+                            className="w-4 h-4 text-[--primary] rounded focus:ring-[--primary]"
                         />
+                        <label htmlFor="available" className="text-sm font-medium text-gray-700 select-none cursor-pointer">
+                            Disponibile per l'ordine
+                        </label>
                     </div>
-                </div>
 
-                <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
-                    <Bottone variante="fantasma" onClick={() => setIsModalOpen(false)}>Annulla</Bottone>
-                    <Bottone onClick={handleSaveItem}>Salva Piatto</Bottone>
+                    <div className="pt-4 flex gap-3">
+                        <Bottone 
+                            variante="secondario" 
+                            className="flex-1 justify-center"
+                            onClick={() => setIsModalOpen(false)}
+                        >
+                            Annulla
+                        </Bottone>
+                        <Bottone 
+                            variante="primario" 
+                            className="flex-1 justify-center"
+                            onClick={handleSaveItem}
+                        >
+                            Salva
+                        </Bottone>
+                    </div>
                 </div>
             </div>
         </div>
