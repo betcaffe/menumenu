@@ -35,7 +35,7 @@ export default function GestioneMenu() {
             setRestaurantId(restaurant.id);
             
             // 2. Get Menu Items
-            const { data: items, error: menuError } = await supabase
+            const { data: items, error: _menuError } = await supabase
                 .from('menu_items')
                 .select('*')
                 .eq('restaurant_id', restaurant.id);

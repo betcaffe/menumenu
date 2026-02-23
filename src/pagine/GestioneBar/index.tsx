@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, ChefHat, CheckCircle, Clock, Loader2 } from 'lucide-react';
+import { ChefHat, CheckCircle, Clock, Loader2 } from 'lucide-react';
 import Header from '../../componenti/Header';
 import Bottone from '../../componenti/Bottone';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../supabaseClient';
-import { Order, OrderItem, MenuCategory } from '../GestioneMenu/types';
+import { OrderItem, MenuCategory } from '../GestioneMenu/types';
 
 interface DisplayOrder {
     orderId: string;
@@ -104,7 +103,7 @@ export default function GestioneBar() {
         };
     }, [user]);
 
-    const fetchOrders = async (restId: string) => {
+    const fetchOrders = async (_restId: string) => {
         const { data: activeOrders, error } = await supabase
             .from('orders')
             .select(`

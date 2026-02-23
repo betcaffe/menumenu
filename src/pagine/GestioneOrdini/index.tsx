@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Stage, Layer, Rect, Group } from 'react-konva';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, ChefHat, Plus, Trash2, ShoppingCart } from 'lucide-react';
+import { ChefHat, ShoppingCart } from 'lucide-react';
 import ElementoCanvas from '../DisegnaRistorante/ElementoCanvas';
 import { Elemento } from '../DisegnaRistorante/types';
-import { MenuItem, MenuCategory, CATEGORIES, Order, INITIAL_MENU } from '../GestioneMenu/types';
+import { MenuItem, MenuCategory, CATEGORIES, Order } from '../GestioneMenu/types';
 import Bottone from '../../componenti/Bottone';
 import Header from '../../componenti/Header';
 import { useAuth } from '../../context/AuthContext';

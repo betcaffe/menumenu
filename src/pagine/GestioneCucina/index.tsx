@@ -97,7 +97,7 @@ export default function GestioneCucina() {
         };
     }, [user]);
 
-    const fetchOrders = async (restId: string) => {
+    const fetchOrders = async (_restId: string) => {
         const { data: activeOrders, error } = await supabase
             .from('orders')
             .select(`
