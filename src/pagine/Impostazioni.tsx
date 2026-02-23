@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ChefHat, PenTool, Settings, ArrowLeft } from 'lucide-react';
+import { ChefHat, PenTool, ArrowLeft } from 'lucide-react';
 import Navbar from '../componenti/Navbar';
 import DashboardCard from '../componenti/DashboardCard';
 

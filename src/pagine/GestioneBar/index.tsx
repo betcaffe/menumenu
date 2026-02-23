@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChefHat, CheckCircle, Clock, Loader2, ArrowLeft, Wine } from 'lucide-react';
+import { CheckCircle, Clock, Loader2, ArrowLeft, Wine } from 'lucide-react';
 import Navbar from '../../componenti/Navbar';
 import Bottone from '../../componenti/Bottone';
 import { useAuth } from '../../context/AuthContext';

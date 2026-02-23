@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChefHat, Plus, Edit2, Trash2, X, ArrowLeft, Menu as MenuIcon, ChevronRight } from 'lucide-react';
+import { ChefHat, Plus, Edit2, Trash2, X, ArrowLeft, Menu as MenuIcon } from 'lucide-react';
 import Bottone from '../../componenti/Bottone';
 import Navbar from '../../componenti/Navbar';
 import Input from '../../componenti/Input';
