@@ -6,6 +6,7 @@ import ElementoCanvas from '../DisegnaRistorante/ElementoCanvas';
 import { Elemento } from '../DisegnaRistorante/types';
 import { MenuItem, MenuCategory, CATEGORIES, Order, INITIAL_MENU } from '../GestioneMenu/types';
 import Bottone from '../../componenti/Bottone';
+import Header from '../../componenti/Header';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../supabaseClient';
 
@@ -21,6 +22,7 @@ export default function GestioneOrdini() {
   const [scale, setScale] = useState(1);
   const [isLayoutReady, setIsLayoutReady] = useState(false);
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
+  const [isAddingItem, setIsAddingItem] = useState(false);
   
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -68,10 +70,12 @@ export default function GestioneOrdini() {
                     status: o.status,
                     timestamp: new Date(o.created_at).getTime(),
                     items: (o.order_items || []).map((i: any) => ({
+                        id: i.id,
                         menuItemId: i.menu_item_id,
                         quantity: i.quantity,
                         name: i.name,
-                        price: i.price
+                        price: i.price,
+                        created_at: i.created_at
                     }))
                 }));
                 setOrders(mappedOrders);
@@ -184,13 +188,15 @@ export default function GestioneOrdini() {
   };
 
   const handleAddToOrder = async (item: MenuItem) => {
-    if (!selectedTableId || !restaurantId) return;
+    if (!user || !selectedTableId || !restaurantId || isAddingItem) return;
+    setIsAddingItem(true);
 
     let orderId: string;
     let newOrderCreated = false;
 
     // 1. Check local state for active order
     const existingOrderIndex = orders.findIndex(o => o.tableId === selectedTableId && o.status === 'active');
+    const tempId = `temp-${Date.now()}`;
     
     // Optimistic Update
     setOrders(prev => {
@@ -198,12 +204,15 @@ export default function GestioneOrdini() {
       if (existingOrderIndex >= 0) {
         // Update existing
         const order = { ...newOrders[existingOrderIndex] };
-        const itemIndex = order.items.findIndex(i => i.menuItemId === item.id);
-        if (itemIndex >= 0) {
-            order.items[itemIndex] = { ...order.items[itemIndex], quantity: order.items[itemIndex].quantity + 1 };
-        } else {
-            order.items.push({ menuItemId: item.id, name: item.name, price: item.price, quantity: 1 });
-        }
+        // Create a copy of items array to avoid mutating state directly
+        order.items = [...order.items, { 
+            id: tempId,
+            menuItemId: item.id, 
+            name: item.name, 
+            price: item.price, 
+            quantity: 1,
+            created_at: new Date().toISOString()
+        }];
         newOrders[existingOrderIndex] = order;
       } else {
         // Create new
@@ -211,7 +220,14 @@ export default function GestioneOrdini() {
             tableId: selectedTableId,
             status: 'active',
             timestamp: Date.now(),
-            items: [{ menuItemId: item.id, name: item.name, price: item.price, quantity: 1 }]
+            items: [{ 
+                id: tempId,
+                menuItemId: item.id, 
+                name: item.name, 
+                price: item.price, 
+                quantity: 1,
+                created_at: new Date().toISOString()
+            }]
         });
       }
       return newOrders;
@@ -226,6 +242,7 @@ export default function GestioneOrdini() {
             const { data: newOrder, error } = await supabase
                 .from('orders')
                 .insert([{ 
+                    user_id: user.id,
                     restaurant_id: restaurantId, 
                     table_id: selectedTableId,
                     status: 'active'
@@ -238,41 +255,42 @@ export default function GestioneOrdini() {
             newOrderCreated = true;
         }
 
-        // 3. Add/Update Item in DB
-        // Check if item exists in order
-        const { data: existingItems } = await supabase
-            .from('order_items')
-            .select('*')
-            .eq('order_id', orderId)
-            .eq('menu_item_id', item.id);
-            
-        if (existingItems && existingItems.length > 0) {
-            const existingItem = existingItems[0];
-            await supabase
-                .from('order_items')
-                .update({ quantity: existingItem.quantity + 1 })
-                .eq('id', existingItem.id);
-        } else {
-            await supabase
-                .from('order_items')
-                .insert([{
-                    order_id: orderId,
-                    menu_item_id: item.id,
-                    name: item.name,
-                    price: item.price,
-                    quantity: 1
-                }]);
-        }
+        // 3. Add/Update Item in DB via RPC (Atomic to prevent race conditions)
+        const { data: newItemId, error: rpcError } = await supabase.rpc('add_item_to_order', {
+            p_order_id: orderId,
+            p_menu_item_id: item.id,
+            p_name: item.name,
+            p_price: item.price,
+            p_category: item.category
+        });
+        
+        if (rpcError) throw rpcError;
 
         // If we created a new order, update the local state with the ID
-        if (newOrderCreated) {
-            setOrders(prev => prev.map(o => o.tableId === selectedTableId && !o.id ? { ...o, id: orderId } : o));
-        }
+        // And update the item ID with the real one from DB
+        setOrders(prev => {
+            const newOrders = [...prev];
+            const orderIdx = newOrders.findIndex(o => o.tableId === selectedTableId && o.status === 'active');
+            
+            if (orderIdx >= 0) {
+                const order = { ...newOrders[orderIdx] };
+                if (newOrderCreated && !order.id) order.id = orderId;
+                
+                const itemIdx = order.items.findIndex(i => i.id === tempId);
+                if (itemIdx >= 0 && newItemId) {
+                    order.items[itemIdx] = { ...order.items[itemIdx], id: newItemId };
+                }
+                newOrders[orderIdx] = order;
+            }
+            return newOrders;
+        });
 
     } catch (e) {
         console.error("Error adding to order:", e);
         // Revert optimistic update? Or just alert.
         alert("Errore nell'aggiornamento dell'ordine");
+    } finally {
+        setIsAddingItem(false);
     }
   };
 
@@ -285,19 +303,25 @@ export default function GestioneOrdini() {
     const order = orders[orderIndex];
     if (!order.id) return; // Should have ID by now
 
+    // Find the last item with this menuItemId to remove
+    // We remove the last one added (LIFO for removal)
+    const reversedIndex = [...order.items].reverse().findIndex(i => i.menuItemId === menuItemId);
+    
+    if (reversedIndex === -1) return;
+    
+    const itemIndex = order.items.length - 1 - reversedIndex;
+    const itemToRemove = order.items[itemIndex];
+
+    if (!itemToRemove.id) return; // Wait for ID to be assigned
+
     // Optimistic Update
     setOrders(prev => {
       const newOrders = [...prev];
       const currentOrder = { ...newOrders[orderIndex] };
-      const itemIndex = currentOrder.items.findIndex(i => i.menuItemId === menuItemId);
       
-      if (itemIndex >= 0) {
-         if (currentOrder.items[itemIndex].quantity > 1) {
-             currentOrder.items[itemIndex].quantity -= 1;
-         } else {
-             currentOrder.items.splice(itemIndex, 1);
-         }
-      }
+      // Create a copy of items array to avoid mutating state directly
+      currentOrder.items = [...currentOrder.items];
+      currentOrder.items.splice(itemIndex, 1);
       
       if (currentOrder.items.length === 0) {
           newOrders.splice(orderIndex, 1);
@@ -309,38 +333,22 @@ export default function GestioneOrdini() {
 
     // DB Interaction
     try {
-        const { data: existingItems } = await supabase
+        await supabase
             .from('order_items')
-            .select('*')
-            .eq('order_id', order.id)
-            .eq('menu_item_id', menuItemId)
-            .single();
+            .delete()
+            .eq('id', itemToRemove.id);
             
-        if (existingItems) {
-            if (existingItems.quantity > 1) {
-                await supabase
-                    .from('order_items')
-                    .update({ quantity: existingItems.quantity - 1 })
-                    .eq('id', existingItems.id);
-            } else {
-                await supabase
-                    .from('order_items')
-                    .delete()
-                    .eq('id', existingItems.id);
-                    
-                // Check if order is empty now
-                const { count } = await supabase
-                    .from('order_items')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('order_id', order.id);
-                    
-                if (count === 0) {
-                    await supabase
-                        .from('orders')
-                        .delete()
-                        .eq('id', order.id);
-                }
-            }
+        // Check if order is empty now
+        const { count } = await supabase
+            .from('order_items')
+            .select('*', { count: 'exact', head: true })
+            .eq('order_id', order.id);
+            
+        if (count === 0) {
+            await supabase
+                .from('orders')
+                .delete()
+                .eq('id', order.id);
         }
     } catch (e) {
         console.error("Error removing from order:", e);
@@ -375,21 +383,35 @@ export default function GestioneOrdini() {
   const currentTotal = currentOrder?.items.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
   const selectedTableLabel = elementi.find(e => e.id === selectedTableId)?.label || 'Tavolo';
 
+  // Group items for display
+  const groupedItems = currentOrder ? currentOrder.items.reduce((acc, item) => {
+      const existing = acc.find(g => g.menuItemId === item.menuItemId);
+      if (existing) {
+          existing.quantity += item.quantity;
+          existing.totalPrice += (item.price * item.quantity);
+      } else {
+          acc.push({
+              menuItemId: item.menuItemId,
+              name: item.name,
+              price: item.price,
+              quantity: item.quantity,
+              totalPrice: item.price * item.quantity
+          });
+      }
+      return acc;
+  }, [] as { menuItemId: string, name: string, price: number, quantity: number, totalPrice: number }[]) : [];
+
   // Filter only table elements for the list
   const tables = elementi.filter(el => el.type === 'rect');
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 p-4 flex items-center gap-4 shadow-sm z-10 shrink-0">
-        <Link to="/" className="text-gray-500 hover:text-[--secondary] p-1">
-            <ArrowLeft className="w-6 h-6" />
-        </Link>
-        <h1 className="text-xl font-bold text-[--secondary] flex items-center gap-2">
-            <ChefHat className="w-6 h-6 text-[--primary]" />
-            Sala & Ordini
-        </h1>
-      </header>
+      <Header 
+        title="Sala & Ordini" 
+        icon={<ChefHat className="w-6 h-6 text-[--primary]" />}
+        backLink="/dashboard"
+      />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar: Tables List */}
@@ -549,16 +571,16 @@ export default function GestioneOrdini() {
                     <h3 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
                         <ShoppingCart className="w-4 h-4" /> Ordine Corrente
                     </h3>
-                    {currentOrder && currentOrder.items.length > 0 ? (
+                    {groupedItems.length > 0 ? (
                         <ul className="space-y-2">
-                            {currentOrder.items.map(item => (
+                            {groupedItems.map(item => (
                                 <li key={item.menuItemId} className="flex justify-between items-center bg-gray-50 p-2 rounded border border-gray-100">
                                     <div>
                                         <div className="font-medium text-sm">{item.name}</div>
                                         <div className="text-xs text-gray-500">€ {item.price.toFixed(2)} x {item.quantity}</div>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <span className="font-bold text-sm">€ {(item.price * item.quantity).toFixed(2)}</span>
+                                        <span className="font-bold text-sm">€ {item.totalPrice.toFixed(2)}</span>
                                         <button 
                                             onClick={() => handleRemoveFromOrder(item.menuItemId)}
                                             className="text-red-400 hover:text-red-600 p-1"

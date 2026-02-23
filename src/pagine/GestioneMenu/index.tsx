@@ -2,6 +2,11 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ChefHat, Plus, Edit2, Trash2, X } from 'lucide-react';
 import Bottone from '../../componenti/Bottone';
+import Header from '../../componenti/Header';
+import Input from '../../componenti/Input';
+import Textarea from '../../componenti/Textarea';
+import Select from '../../componenti/Select';
+import Checkbox from '../../componenti/Checkbox';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../supabaseClient';
 import { MenuItem, MenuCategory, CATEGORIES, INITIAL_MENU } from './types';
@@ -116,6 +121,7 @@ export default function GestioneMenu() {
     }
 
     const itemData = {
+        user_id: user.id,
         restaurant_id: currentRestaurantId,
         name: editingItem.name,
         description: editingItem.description,
@@ -172,21 +178,16 @@ export default function GestioneMenu() {
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 p-4 flex items-center justify-between shadow-sm z-10">
-        <div className="flex items-center gap-4">
-            <Link to="/" className="text-gray-500 hover:text-[--secondary] p-1">
-                <ArrowLeft className="w-6 h-6" />
-            </Link>
-            <h1 className="text-xl font-bold text-[--secondary] flex items-center gap-2">
-                <ChefHat className="w-6 h-6 text-[--primary]" />
-                Gestione Menu
-            </h1>
-        </div>
+      <Header 
+        title="Gestione Menu" 
+        icon={<ChefHat className="w-6 h-6 text-[--primary]" />}
+        backLink="/dashboard"
+      >
         <Bottone onClick={handleAddItem} className="flex items-center gap-2">
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Aggiungi Piatto</span>
         </Bottone>
-      </header>
+      </Header>
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar Categories */}
@@ -295,62 +296,51 @@ export default function GestioneMenu() {
                 </div>
                 
                 <div className="p-6 space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Nome Piatto</label>
-                        <input 
-                            type="text" 
-                            value={editingItem.name}
-                            onChange={e => setEditingItem({...editingItem, name: e.target.value})}
-                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[--primary] focus:border-transparent outline-none"
-                            placeholder="Es. Spaghetti Carbonara"
-                            autoFocus
-                        />
-                    </div>
+                    <Input 
+                        label="Nome Piatto"
+                        type="text" 
+                        value={editingItem.name}
+                        onChange={e => setEditingItem({...editingItem, name: e.target.value})}
+                        placeholder="Es. Spaghetti Carbonara"
+                        autoFocus
+                    />
                     
                     <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Prezzo (€)</label>
-                            <input 
-                                type="number" 
-                                step="0.50"
-                                value={editingItem.price}
-                                onChange={e => setEditingItem({...editingItem, price: parseFloat(e.target.value) || 0})}
-                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[--primary] focus:border-transparent outline-none"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-                            <select 
-                                value={editingItem.category}
-                                onChange={e => setEditingItem({...editingItem, category: e.target.value as MenuCategory})}
-                                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[--primary] focus:border-transparent outline-none"
-                            >
-                                {CATEGORIES.map(cat => (
-                                    <option key={cat} value={cat}>{cat}</option>
-                                ))}
-                            </select>
-                        </div>
+                        <Input 
+                            label="Prezzo (€)"
+                            type="number" 
+                            step="0.50"
+                            value={editingItem.price}
+                            onChange={e => setEditingItem({...editingItem, price: parseFloat(e.target.value) || 0})}
+                        />
+                        <Select 
+                            label="Categoria"
+                            value={editingItem.category}
+                            onChange={e => setEditingItem({...editingItem, category: e.target.value as MenuCategory})}
+                        >
+                            {CATEGORIES.map(cat => (
+                                <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                        </Select>
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Descrizione (Opzionale)</label>
-                        <textarea 
+                        <Textarea 
+                            label="Descrizione (Opzionale)"
                             value={editingItem.description || ''}
                             onChange={e => setEditingItem({...editingItem, description: e.target.value})}
-                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[--primary] focus:border-transparent outline-none h-24 resize-none"
                             placeholder="Ingredienti, allergeni, note..."
+                            className="h-24 resize-none"
                         />
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <input 
-                            type="checkbox" 
+                        <Checkbox 
                             id="available"
+                            label="Disponibile per gli ordini"
                             checked={editingItem.available}
                             onChange={e => setEditingItem({...editingItem, available: e.target.checked})}
-                            className="w-4 h-4 text-[--primary] rounded border-gray-300 focus:ring-[--primary]"
                         />
-                        <label htmlFor="available" className="text-sm text-gray-700">Disponibile per gli ordini</label>
                     </div>
                 </div>
 

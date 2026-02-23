@@ -28,7 +28,7 @@ export default function Strumenti({
          >
            <Menu className="w-6 h-6" />
          </button>
-         <Link to="/" className="text-gray-500 hover:text-[--secondary] p-1">
+         <Link to="/dashboard" className="text-gray-500 hover:text-[--secondary] p-1">
             <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
          </Link>
          <h1 className="text-lg sm:text-xl font-bold text-[--secondary] flex items-center gap-2">

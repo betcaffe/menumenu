@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ChefHat, PenTool, ClipboardList, LogOut } from 'lucide-react';
+import { ChefHat, PenTool, ClipboardList, LogOut, Utensils, Wine } from 'lucide-react';
 import Bottone from '../componenti/Bottone';
 import Scheda from '../componenti/Scheda';
 import { useAuth } from '../context/AuthContext';
@@ -65,6 +65,32 @@ export default function Dashboard() {
           <Link to="/gestione-menu" className="w-full">
             <Bottone pienaLarghezza variante="secondario">
               Modifica Menu
+            </Bottone>
+          </Link>
+        </Scheda>
+
+        <Scheda interattiva className="flex flex-col items-center text-center">
+          <div className="bg-orange-100 p-4 rounded-full mb-6">
+            <Utensils size={32} className="text-[--primary]" />
+          </div>
+          <h2 className="text-2xl font-semibold mb-3">Cucina</h2>
+          <p className="text-gray-500 mb-6">Visualizza le comande per la cucina in tempo reale.</p>
+          <Link to="/gestione-cucina" className="w-full">
+            <Bottone pienaLarghezza variante="primario">
+              Apri Cucina
+            </Bottone>
+          </Link>
+        </Scheda>
+
+        <Scheda interattiva className="flex flex-col items-center text-center">
+          <div className="bg-blue-100 p-4 rounded-full mb-6">
+            <Wine size={32} className="text-[--secondary]" />
+          </div>
+          <h2 className="text-2xl font-semibold mb-3">Bar</h2>
+          <p className="text-gray-500 mb-6">Visualizza le comande per il bar in tempo reale.</p>
+          <Link to="/gestione-bar" className="w-full">
+            <Bottone pienaLarghezza variante="secondario">
+              Apri Bar
             </Bottone>
           </Link>
         </Scheda>

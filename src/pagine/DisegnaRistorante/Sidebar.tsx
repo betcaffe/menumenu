@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Bottone from '../../componenti/Bottone';
+import Input from '../../componenti/Input';
 import { Plus, Square, LayoutTemplate } from 'lucide-react';
 
 interface SidebarProps {
@@ -46,27 +47,23 @@ export default function Sidebar({
         
         <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-2">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-gray-500 font-medium">Larghezza (m)</label>
-              <input 
+            <Input 
+                label="Larghezza (m)"
                 type="number" 
                 min="1"
                 value={roomDimensions.width} 
                 onChange={(e) => setRoomDimensions({...roomDimensions, width: parseFloat(e.target.value) || 0})}
-                className="w-full text-sm border border-gray-300 rounded p-1.5 focus:border-[--secondary] focus:outline-none"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-gray-500 font-medium">Altezza (m)</label>
-              <input 
+                className="h-8 py-1"
+            />
+            <Input 
+                label="Altezza (m)"
                 type="number" 
                 min="1"
                 step="0.5"
                 value={roomDimensions.height} 
                 onChange={(e) => setRoomDimensions({...roomDimensions, height: parseFloat(e.target.value) || 0})}
-                className="w-full text-sm border border-gray-300 rounded p-1.5 focus:border-[--secondary] focus:outline-none"
-              />
-            </div>
+                className="h-8 py-1"
+            />
           </div>
           
           <Bottone 
@@ -99,40 +96,34 @@ export default function Sidebar({
         </h3>
         
         <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 flex flex-col gap-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-gray-500 font-medium">Nome Oggetto</label>
-            <input 
+          <Input 
+              label="Nome Oggetto"
               type="text" 
               placeholder="Es. Tavolo VIP"
               value={customObj.name}
               onChange={(e) => setCustomObj({...customObj, name: e.target.value})}
-              className="w-full text-sm border border-gray-300 rounded p-1.5 focus:border-[--secondary] focus:outline-none"
-            />
-          </div>
+              className="h-8 py-1"
+          />
 
           <div className="grid grid-cols-2 gap-2">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-gray-500 font-medium">Larghezza (m)</label>
-              <input 
+            <Input 
+                label="Larghezza (m)"
                 type="number" 
                 min="0.5"
                 step="0.5"
                 value={customObj.width}
                 onChange={(e) => setCustomObj({...customObj, width: parseFloat(e.target.value) || 0})}
-                className="w-full text-sm border border-gray-300 rounded p-1.5 focus:border-[--secondary] focus:outline-none"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-gray-500 font-medium">Altezza (m)</label>
-              <input 
+                className="h-8 py-1"
+            />
+            <Input 
+                label="Altezza (m)"
                 type="number" 
                 min="0.5"
                 step="0.5"
                 value={customObj.height}
                 onChange={(e) => setCustomObj({...customObj, height: parseFloat(e.target.value) || 0})}
-                className="w-full text-sm border border-gray-300 rounded p-1.5 focus:border-[--secondary] focus:outline-none"
-              />
-            </div>
+                className="h-8 py-1"
+            />
           </div>
           
           <Bottone 

@@ -12,10 +12,14 @@ export interface MenuItem {
 }
 
 export interface OrderItem {
+  id?: string; // Database ID
   menuItemId: string;
   quantity: number;
   name: string; // denormalized for easier display
   price: number; // denormalized price at time of order
+  category?: MenuCategory; // Helpful for filtering
+  status?: 'pending' | 'preparing' | 'ready' | 'served';
+  created_at?: string;
 }
 
 export interface Order {
