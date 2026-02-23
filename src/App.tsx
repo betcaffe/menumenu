@@ -7,6 +7,8 @@ import GestioneBar from './pagine/GestioneBar';
 import GestioneCucina from './pagine/GestioneCucina';
 import Home from './pagine/Home';
 import Dashboard from './pagine/Dashboard';
+import Impostazioni from './pagine/Impostazioni';
+import GestioneComande from './pagine/GestioneComande';
 import Login from './pagine/Auth/Login';
 import Registrazione from './pagine/Auth/Registrazione';
 
@@ -34,6 +36,16 @@ function App() {
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/impostazioni" element={
+              <ProtectedRoute>
+                <Impostazioni />
+              </ProtectedRoute>
+            } />
+            <Route path="/gestione-comande" element={
+              <ProtectedRoute>
+                <GestioneComande />
               </ProtectedRoute>
             } />
             <Route path="/disegna" element={
