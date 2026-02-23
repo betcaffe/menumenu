@@ -22,7 +22,6 @@ export default function GestioneOrdini() {
   const [isLayoutReady, setIsLayoutReady] = useState(false);
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [isAddingItem, setIsAddingItem] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -167,7 +166,7 @@ export default function GestioneOrdini() {
         clearTimeout(timer);
         if (animationFrameId) cancelAnimationFrame(animationFrameId);
     };
-  }, [elementi, isSidebarOpen, selectedTableId]); // Re-calculate when elements change or layout changes
+  }, [elementi, selectedTableId]); // Re-calculate when elements change or layout changes
 
   const getTableColor = (tableId: string) => {
     const tableOrder = orders.find(o => o.tableId === tableId && o.status === 'active');
@@ -184,7 +183,6 @@ export default function GestioneOrdini() {
     const el = elementi.find(e => e.id === id);
     if (el && el.type === 'rect') {
       setSelectedTableId(id);
-      setIsSidebarOpen(false); // Close sidebar on mobile
     }
   };
 
@@ -412,43 +410,16 @@ export default function GestioneOrdini() {
         title="Sala & Ordini" 
         icon={<ChefHat className="w-6 h-6 text-[--primary]" />}
         backLink="/dashboard"
-      >
-        <button 
-          className="md:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        >
-          {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
-      </Header>
+      />
 
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Mobile Overlay */}
-        {isSidebarOpen && (
-            <div 
-                className="fixed inset-0 bg-black/50 z-20 md:hidden"
-                onClick={() => setIsSidebarOpen(false)}
-            />
-        )}
-
         {/* Left Sidebar: Tables List */}
-        <div className={`
-            absolute md:relative top-0 left-0 h-full z-30
-            w-[280px] md:w-[20%] md:min-w-[220px] 
-            bg-white border-r border-gray-200 flex flex-col shadow-lg shrink-0
-            transform transition-transform duration-300 ease-in-out
-            ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-        `}>
+        <div className="w-[30%] min-w-[100px] max-w-[300px] bg-white border-r border-gray-200 flex flex-col shadow-lg shrink-0 z-20">
             <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
                 <div>
                     <h2 className="font-bold text-lg text-gray-800">Tavoli</h2>
-                    <p className="text-sm text-gray-500">Seleziona un tavolo</p>
+                    <p className="text-sm text-gray-500 hidden sm:block">Seleziona un tavolo</p>
                 </div>
-                <button 
-                    onClick={() => setIsSidebarOpen(false)}
-                    className="md:hidden text-gray-400 hover:text-gray-600"
-                >
-                    <X className="w-5 h-5" />
-                </button>
             </div>
             <div className="flex-1 overflow-y-auto p-2">
                 <div className="flex flex-col gap-3">
@@ -581,9 +552,9 @@ export default function GestioneOrdini() {
             </div>
         </div>
 
-        {/* Right Sidebar: Order Detail */}
+        {/* Right Sidebar: Order Detail Overlay */}
         {selectedTableId && (
-            <div className="absolute inset-0 md:static z-40 md:z-10 w-full md:w-[30%] md:min-w-[320px] bg-white border-l border-gray-200 flex flex-col shadow-lg shrink-0 animate-in slide-in-from-right duration-300">
+            <div className="absolute right-0 top-0 bottom-0 w-[85%] md:w-[400px] z-50 bg-white/95 backdrop-blur shadow-2xl border-l border-gray-200 flex flex-col animate-in slide-in-from-right duration-300">
                 <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
                     <div>
                         <h2 className="font-bold text-lg text-gray-800">{selectedTableLabel}</h2>

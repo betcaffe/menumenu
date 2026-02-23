@@ -188,43 +188,30 @@ export default function GestioneMenu() {
         </Bottone>
       </Header>
 
-      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+      <div className="flex flex-row flex-1 overflow-hidden">
         {/* Sidebar Categories */}
-        <div className="w-[20%] min-w-[220px] bg-white border-r border-gray-200 overflow-y-auto hidden md:block">
-            <div className="p-4">
-                <h2 className="font-semibold text-gray-500 mb-4 text-sm uppercase tracking-wider">Categorie</h2>
+        <div className="w-[30%] min-w-[120px] max-w-[250px] bg-white border-r border-gray-200 overflow-y-auto">
+            <div className="p-2 md:p-4">
+                <h2 className="font-semibold text-gray-500 mb-4 text-xs md:text-sm uppercase tracking-wider hidden md:block">Categorie</h2>
                 <nav className="space-y-1">
                     {CATEGORIES.map(cat => (
                         <button
                             key={cat}
                             onClick={() => setActiveCategory(cat)}
-                            className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center justify-between ${
+                            className={`w-full text-left px-2 py-2 md:px-4 md:py-3 rounded-lg transition-colors flex flex-col md:flex-row md:items-center justify-between gap-1 ${
                                 activeCategory === cat 
                                 ? 'bg-[--primary] text-white font-medium shadow-md' 
                                 : 'text-gray-600 hover:bg-gray-100'
                             }`}
                         >
-                            {cat}
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${activeCategory === cat ? 'bg-white/20' : 'bg-gray-200'}`}>
+                            <span className="text-sm md:text-base truncate">{cat}</span>
+                            <span className={`text-[10px] md:text-xs px-1.5 py-0.5 rounded-full w-fit ${activeCategory === cat ? 'bg-white/20' : 'bg-gray-200'}`}>
                                 {menuItems.filter(i => i.category === cat).length}
                             </span>
                         </button>
                     ))}
                 </nav>
             </div>
-        </div>
-
-        {/* Mobile Category Select */}
-        <div className="md:hidden p-4 bg-white border-b border-gray-200">
-            <select 
-                value={activeCategory} 
-                onChange={(e) => setActiveCategory(e.target.value as MenuCategory)}
-                className="w-full p-2 border border-gray-300 rounded-lg"
-            >
-                {CATEGORIES.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                ))}
-            </select>
         </div>
 
         {/* Main Content */}
