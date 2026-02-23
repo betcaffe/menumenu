@@ -188,7 +188,7 @@ export default function GestioneMenu() {
         </Bottone>
       </Header>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
         {/* Sidebar Categories */}
         <div className="w-[20%] min-w-[220px] bg-white border-r border-gray-200 overflow-y-auto hidden md:block">
             <div className="p-4">
