@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, ChefHat, Plus, Edit2, Trash2, X } from 'lucide-react';
+import { ChefHat, Plus, Edit2, Trash2, X } from 'lucide-react';
 import Bottone from '../../componenti/Bottone';
 import Header from '../../componenti/Header';
 import Input from '../../componenti/Input';
@@ -9,7 +8,7 @@ import Select from '../../componenti/Select';
 import Checkbox from '../../componenti/Checkbox';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../supabaseClient';
-import { MenuItem, MenuCategory, CATEGORIES, INITIAL_MENU } from './types';
+import { MenuItem, MenuCategory, CATEGORIES } from './types';
 
 export default function GestioneMenu() {
   const { user } = useAuth();
@@ -25,7 +24,7 @@ export default function GestioneMenu() {
 
     const loadData = async () => {
         // 1. Get Restaurant ID
-        const { data: restaurant, error } = await supabase
+        const { data: restaurant, error: _error } = await supabase
             .from('restaurants')
             .select('id')
             .eq('user_id', user.id)

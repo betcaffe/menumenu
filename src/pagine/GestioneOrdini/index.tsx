@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Stage, Layer, Rect, Group } from 'react-konva';
-import { ChefHat, ShoppingCart } from 'lucide-react';
+import { ChefHat, ShoppingCart, Plus, Trash2 } from 'lucide-react';
 import ElementoCanvas from '../DisegnaRistorante/ElementoCanvas';
 import { Elemento } from '../DisegnaRistorante/types';
 import { MenuItem, MenuCategory, CATEGORIES, Order } from '../GestioneMenu/types';

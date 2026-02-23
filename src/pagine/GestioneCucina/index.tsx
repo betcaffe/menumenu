@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, ChefHat, CheckCircle, Clock, Loader2, Utensils } from 'lucide-react';
+import { CheckCircle, Clock, Loader2, Utensils } from 'lucide-react';
 import Header from '../../componenti/Header';
 import Bottone from '../../componenti/Bottone';
 import { useAuth } from '../../context/AuthContext';
@@ -21,7 +20,7 @@ export default function GestioneCucina() {
     const { user } = useAuth();
     const [orders, setOrders] = useState<DisplayOrder[]>([]);
     const [loading, setLoading] = useState(true);
-    const [restaurantId, setRestaurantId] = useState<string | null>(null);
+    const [_restaurantId, setRestaurantId] = useState<string | null>(null);
     const [tableMap, setTableMap] = useState<Record<string, string>>({});
 
     useEffect(() => {
@@ -77,7 +76,7 @@ export default function GestioneCucina() {
                             schema: 'public',
                             table: 'orders',
                         },
-                        (payload) => {
+                        (_payload) => {
                             fetchOrders(restaurant.id);
                         }
                     )

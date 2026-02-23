@@ -19,7 +19,7 @@ export default function GestioneBar() {
     const { user } = useAuth();
     const [orders, setOrders] = useState<DisplayOrder[]>([]);
     const [loading, setLoading] = useState(true);
-    const [restaurantId, setRestaurantId] = useState<string | null>(null);
+    const [_restaurantId, setRestaurantId] = useState<string | null>(null);
     const [tableMap, setTableMap] = useState<Record<string, string>>({});
 
     // Fetch initial data and subscribe to changes
@@ -83,7 +83,7 @@ export default function GestioneBar() {
                             schema: 'public',
                             table: 'orders',
                         },
-                        (payload) => {
+                        (_payload) => {
                             fetchOrders(restaurant.id);
                         }
                     )
