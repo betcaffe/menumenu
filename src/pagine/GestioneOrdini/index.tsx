@@ -415,37 +415,37 @@ export default function GestioneOrdini() {
       <div className="flex flex-1 overflow-hidden relative">
         {/* Left Sidebar: Tables List (25% width) */}
         <div className="w-[25%] border-r border-gray-200 flex flex-col shadow-lg shrink-0 z-20 bg-white">
-            <div className="p-[1.5vw] border-b border-gray-200 bg-gray-50 flex justify-between items-center h-[8%] min-h-[60px]">
+            <div className="p-[min(1.5vw,20px)] border-b border-gray-200 bg-gray-50 flex justify-between items-center h-[8%] min-h-[60px]">
                 <div>
-                    <h2 className="font-bold text-gray-800" style={{ fontSize: '2vw' }}>Tavoli</h2>
+                    <h2 className="font-bold text-gray-800" style={{ fontSize: 'min(2vw, 24px)' }}>Tavoli</h2>
                 </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-[1.5vw]">
-                <div className="flex flex-col gap-[1.2vw]">
+            <div className="flex-1 overflow-y-auto p-[min(1.5vw,20px)]">
+                <div className="flex flex-col gap-[min(1.2vw,16px)]">
                     {tables.map(table => {
                         const isOccupied = getTableStroke(table.id) === '#ef4444';
                         const isSelected = selectedTableId === table.id;
                         return (
-                            <div key={table.id} className="flex flex-col gap-[1vw]">
+                            <div key={table.id} className="flex flex-col gap-[min(1vw,12px)]">
                                 <button
                                     onClick={() => {
                                         handleTableSelect(table.id);
                                     }}
-                                    className={`w-full p-[1.5vw] rounded-xl border transition-all flex items-center justify-between ${
+                                    className={`w-full p-[min(1.5vw,20px)] rounded-xl border transition-all flex items-center justify-between ${
                                         isOccupied 
                                         ? 'bg-red-50 border-red-200 hover:border-red-400' 
                                         : 'bg-green-50 border-green-200 hover:border-green-400'
                                     } ${isSelected ? 'ring-4 ring-[--primary] ring-offset-2' : ''}`}
                                 >
-                                    <span className="font-bold text-gray-700" style={{ fontSize: '1.5vw' }}>{table.label || 'Tavolo'}</span>
-                                    <span className={`px-[0.8vw] py-[0.4vw] rounded-full font-medium ${isOccupied ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`} style={{ fontSize: '1.1vw' }}>
+                                    <span className="font-bold text-gray-700" style={{ fontSize: 'min(1.5vw, 18px)' }}>{table.label || 'Tavolo'}</span>
+                                    <span className={`px-[min(0.8vw,10px)] py-[min(0.4vw,6px)] rounded-full font-medium ${isOccupied ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`} style={{ fontSize: 'min(1.1vw, 14px)' }}>
                                         {isOccupied ? 'Occupato' : 'Libero'}
                                     </span>
                                 </button>
                                 
                                 {/* Categories and Items - Only visible if table is selected */}
                                 {isSelected && (
-                                    <div className="ml-[1.5vw] pl-[1.5vw] border-l-4 border-gray-200 flex flex-col gap-[1vw] animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="ml-[min(1.5vw,20px)] pl-[min(1.5vw,20px)] border-l-4 border-gray-200 flex flex-col gap-[min(1vw,12px)] animate-in fade-in slide-in-from-top-2 duration-200">
                                         {CATEGORIES.map(cat => {
                                             const isCatActive = activeCategory === cat;
                                             const catItems = menuItems.filter(i => i.category === cat && i.available);
@@ -454,36 +454,36 @@ export default function GestioneOrdini() {
                                                 <div key={cat} className="flex flex-col">
                                                     <button
                                                         onClick={() => setActiveCategory(isCatActive ? null : cat)}
-                                                        className={`text-left px-[1vw] py-[1vw] rounded-lg font-medium flex justify-between items-center transition-colors ${
+                                                        className={`text-left px-[min(1vw,12px)] py-[min(1vw,12px)] rounded-lg font-medium flex justify-between items-center transition-colors ${
                                                             isCatActive 
                                                             ? 'bg-[--primary] text-white shadow-sm' 
                                                             : 'text-gray-600 hover:bg-gray-100'
                                                         }`}
-                                                        style={{ fontSize: '1.3vw' }}
+                                                        style={{ fontSize: 'min(1.3vw, 16px)' }}
                                                     >
                                                         {cat}
-                                                        <span className={`px-[0.6vw] py-[0.2vw] rounded-full ${isCatActive ? 'bg-white/20' : 'bg-gray-200'}`} style={{ fontSize: '1.1vw' }}>
+                                                        <span className={`px-[min(0.6vw,8px)] py-[min(0.2vw,4px)] rounded-full ${isCatActive ? 'bg-white/20' : 'bg-gray-200'}`} style={{ fontSize: 'min(1.1vw, 14px)' }}>
                                                             {catItems.length}
                                                         </span>
                                                     </button>
                                                     
                                                     {/* Menu Items for this Category */}
                                                     {isCatActive && (
-                                                        <div className="mt-[0.6vw] ml-[1vw] flex flex-col gap-[0.6vw] animate-in fade-in slide-in-from-top-1 duration-150">
+                                                        <div className="mt-[min(0.6vw,8px)] ml-[min(1vw,12px)] flex flex-col gap-[min(0.6vw,8px)] animate-in fade-in slide-in-from-top-1 duration-150">
                                                             {catItems.length === 0 ? (
-                                                                <p className="text-gray-400 italic p-[1vw]" style={{ fontSize: '1.1vw' }}>Nessun piatto</p>
+                                                                <p className="text-gray-400 italic p-[min(1vw,12px)]" style={{ fontSize: 'min(1.1vw, 14px)' }}>Nessun piatto</p>
                                                             ) : (
                                                                 catItems.map(item => (
                                                                     <button
                                                                         key={item.id}
                                                                         onClick={() => handleAddToOrder(item)}
-                                                                        className="text-left p-[1vw] rounded hover:bg-orange-50 hover:text-orange-700 text-gray-600 border border-transparent hover:border-orange-100 transition-all flex justify-between items-center group"
-                                                                        style={{ fontSize: '1.2vw' }}
+                                                                        className="text-left p-[min(1vw,12px)] rounded hover:bg-orange-50 hover:text-orange-700 text-gray-600 border border-transparent hover:border-orange-100 transition-all flex justify-between items-center group"
+                                                                        style={{ fontSize: 'min(1.2vw, 15px)' }}
                                                                     >
-                                                                        <span className="truncate pr-[0.8vw]">{item.name}</span>
-                                                                        <div className="flex items-center gap-[0.8vw]">
+                                                                        <span className="truncate pr-[min(0.8vw,10px)]">{item.name}</span>
+                                                                        <div className="flex items-center gap-[min(0.8vw,10px)]">
                                                                             <span className="font-semibold">€{item.price.toFixed(2)}</span>
-                                                                            <Plus className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ width: '1vw', height: '1vw' }} />
+                                                                            <Plus className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ width: 'min(1vw,14px)', height: 'min(1vw,14px)' }} />
                                                                         </div>
                                                                     </button>
                                                                 ))
@@ -555,52 +555,52 @@ export default function GestioneOrdini() {
         <div className="w-[25%] border-l border-gray-200 flex flex-col shadow-lg shrink-0 z-20 bg-white">
             {selectedTableId ? (
                 <>
-                    <div className="p-[1.5vw] border-b border-gray-200 bg-gray-50 flex items-center justify-between h-[8%] min-h-[60px]">
+                    <div className="p-[min(1.5vw,20px)] border-b border-gray-200 bg-gray-50 flex items-center justify-between h-[8%] min-h-[60px]">
                         <div>
-                            <h2 className="font-bold text-gray-800" style={{ fontSize: '2vw' }}>{selectedTableLabel}</h2>
-                            <p className="text-gray-500" style={{ fontSize: '1.2vw' }}>
+                            <h2 className="font-bold text-gray-800" style={{ fontSize: 'min(2vw, 24px)' }}>{selectedTableLabel}</h2>
+                            <p className="text-gray-500" style={{ fontSize: 'min(1.2vw, 14px)' }}>
                                 {currentOrder ? 'Occupato' : 'Libero'}
                             </p>
                         </div>
-                        <button onClick={() => setSelectedTableId(null)} className="p-[1vw] bg-white rounded-full shadow-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors border border-gray-200">
-                            <X style={{ width: '2vw', height: '2vw' }} />
+                        <button onClick={() => setSelectedTableId(null)} className="p-[min(1vw,12px)] bg-white rounded-full shadow-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors border border-gray-200">
+                            <X style={{ width: 'min(2vw, 24px)', height: 'min(2vw, 24px)' }} />
                         </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-[1.5vw] bg-gray-50/50">
+                    <div className="flex-1 overflow-y-auto p-[min(1.5vw,20px)] bg-gray-50/50">
                         {!currentOrder || currentOrder.items.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-[1.5vw]">
-                                <div className="w-[8vw] h-[8vw] bg-gray-100 rounded-full flex items-center justify-center">
-                                    <ShoppingCart className="opacity-20" style={{ width: '4vw', height: '4vw' }} />
+                            <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-[min(1.5vw,20px)]">
+                                <div className="w-[8vw] h-[8vw] max-w-[80px] max-h-[80px] bg-gray-100 rounded-full flex items-center justify-center">
+                                    <ShoppingCart className="opacity-20" style={{ width: 'min(4vw, 40px)', height: 'min(4vw, 40px)' }} />
                                 </div>
                                 <div className="text-center">
-                                    <p className="font-medium text-gray-600" style={{ fontSize: '1.5vw' }}>Nessun ordine attivo</p>
-                                    <p style={{ fontSize: '1.2vw' }}>Seleziona i piatti dal menu a sinistra</p>
+                                    <p className="font-medium text-gray-600" style={{ fontSize: 'min(1.5vw, 18px)' }}>Nessun ordine attivo</p>
+                                    <p style={{ fontSize: 'min(1.2vw, 14px)' }}>Seleziona i piatti dal menu a sinistra</p>
                                 </div>
                             </div>
                         ) : (
-                            <div className="space-y-[1.5vw] w-full">
+                            <div className="space-y-[min(1.5vw,20px)] w-full">
                                 {groupedItems.map((item) => (
-                                    <div key={item.menuItemId} className="flex justify-between items-center p-[1.5vw] bg-white rounded-xl border border-gray-200 shadow-sm hover:border-[--primary] transition-colors group">
-                                        <div className="flex items-center gap-[1.5vw]">
-                                            <div className="w-[3.5vw] h-[3.5vw] bg-[--primary]/10 rounded-full flex items-center justify-center text-[--primary] font-bold" style={{ fontSize: '1.3vw' }}>
+                                    <div key={item.menuItemId} className="flex justify-between items-center p-[min(1.5vw,20px)] bg-white rounded-xl border border-gray-200 shadow-sm hover:border-[--primary] transition-colors group">
+                                        <div className="flex items-center gap-[min(1.5vw,20px)]">
+                                            <div className="w-[3.5vw] h-[3.5vw] max-w-[40px] max-h-[40px] bg-[--primary]/10 rounded-full flex items-center justify-center text-[--primary] font-bold" style={{ fontSize: 'min(1.3vw, 14px)' }}>
                                                 {item.quantity}x
                                             </div>
                                             <div>
-                                                <h4 className="font-bold text-gray-800" style={{ fontSize: '1.5vw' }}>{item.name}</h4>
-                                                <p className="text-gray-500" style={{ fontSize: '1.2vw' }}>€ {item.price.toFixed(2)} cad.</p>
+                                                <h4 className="font-bold text-gray-800" style={{ fontSize: 'min(1.5vw, 18px)' }}>{item.name}</h4>
+                                                <p className="text-gray-500" style={{ fontSize: 'min(1.2vw, 14px)' }}>€ {item.price.toFixed(2)} cad.</p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-[1.5vw]">
-                                            <span className="font-bold text-gray-800 text-right" style={{ fontSize: '1.5vw' }}>
+                                        <div className="flex items-center gap-[min(1.5vw,20px)]">
+                                            <span className="font-bold text-gray-800 text-right" style={{ fontSize: 'min(1.5vw, 18px)' }}>
                                                 € {item.totalPrice.toFixed(2)}
                                             </span>
                                             <button 
                                                 onClick={() => handleRemoveFromOrder(item.menuItemId)}
-                                                className="p-[1vw] text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                className="p-[min(1vw,12px)] text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                                 title="Rimuovi"
                                             >
-                                                <Trash2 style={{ width: '2vw', height: '2vw' }} />
+                                                <Trash2 style={{ width: 'min(2vw, 20px)', height: 'min(2vw, 20px)' }} />
                                             </button>
                                         </div>
                                     </div>
@@ -609,18 +609,18 @@ export default function GestioneOrdini() {
                         )}
                     </div>
 
-                    <div className="p-[1.5vw] border-t border-gray-200 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] shrink-0 z-40">
-                        <div className="flex justify-between items-center mb-[1.5vw] w-full">
-                            <span className="text-gray-500 font-medium" style={{ fontSize: '1.5vw' }}>Totale Complessivo</span>
-                            <span className="font-bold text-[--primary]" style={{ fontSize: '2.2vw' }}>€ {currentTotal.toFixed(2)}</span>
+                    <div className="p-[min(1.5vw,20px)] border-t border-gray-200 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] shrink-0 z-40">
+                        <div className="flex justify-between items-center mb-[min(1.5vw,20px)] w-full">
+                            <span className="text-gray-500 font-medium" style={{ fontSize: 'min(1.5vw, 18px)' }}>Totale Complessivo</span>
+                            <span className="font-bold text-[--primary]" style={{ fontSize: 'min(2.2vw, 28px)' }}>€ {currentTotal.toFixed(2)}</span>
                         </div>
-                        <div className="flex gap-[1.5vw] w-full">
+                        <div className="flex gap-[min(1.5vw,20px)] w-full">
                             {currentOrder && currentOrder.items.length > 0 && (
                                 <Bottone 
                                     onClick={handleCloseOrder}
                                     variante="pericolo"
                                     className="flex-1"
-                                    style={{ fontSize: '1.5vw', padding: '1.5vw' }}
+                                    style={{ fontSize: 'min(1.5vw, 18px)', padding: 'min(1.5vw, 20px)' }}
                                 >
                                     Chiudi Conto e Libera
                                 </Bottone>
@@ -629,13 +629,13 @@ export default function GestioneOrdini() {
                     </div>
                 </>
             ) : (
-                <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-[1.5vw] p-[3vw]">
-                    <div className="w-[10vw] h-[10vw] bg-gray-100 rounded-full flex items-center justify-center">
-                        <ShoppingCart className="opacity-20" style={{ width: '5vw', height: '5vw' }} />
+                <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-[min(1.5vw,20px)] p-[min(3vw,40px)]">
+                    <div className="w-[10vw] h-[10vw] max-w-[100px] max-h-[100px] bg-gray-100 rounded-full flex items-center justify-center">
+                        <ShoppingCart className="opacity-20" style={{ width: 'min(5vw, 50px)', height: 'min(5vw, 50px)' }} />
                     </div>
                     <div className="text-center">
-                        <p className="font-medium text-gray-600" style={{ fontSize: '2vw' }}>Conto</p>
-                        <p style={{ fontSize: '1.3vw' }}>Seleziona un tavolo per visualizzare il conto</p>
+                        <p className="font-medium text-gray-600" style={{ fontSize: 'min(2vw, 24px)' }}>Conto</p>
+                        <p style={{ fontSize: 'min(1.3vw, 16px)' }}>Seleziona un tavolo per visualizzare il conto</p>
                     </div>
                 </div>
             )}
