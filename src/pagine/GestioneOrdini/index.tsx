@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Stage, Layer, Rect, Group } from 'react-konva';
-import { ChefHat, ShoppingCart, Plus, Trash2, Menu, X } from 'lucide-react';
+import { ChefHat, ShoppingCart, Plus, Trash2, X } from 'lucide-react';
 import ElementoCanvas from '../DisegnaRistorante/ElementoCanvas';
 import { Elemento } from '../DisegnaRistorante/types';
 import { MenuItem, MenuCategory, CATEGORIES, Order } from '../GestioneMenu/types';
@@ -550,67 +550,84 @@ export default function GestioneOrdini() {
                     </Layer>
                 </Stage>
             </div>
+
+            {/* Order Detail Overlay - Covers the map when a table is selected */}
+            {selectedTableId && (
+                <div className="absolute inset-0 z-50 bg-white/95 backdrop-blur shadow-2xl flex flex-col animate-in fade-in duration-300">
+                    <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between shadow-sm shrink-0">
+                        <div>
+                            <h2 className="font-bold text-lg text-gray-800">{selectedTableLabel}</h2>
+                            <p className="text-sm text-gray-500">
+                                {currentOrder ? 'Occupato - Ordine in corso' : 'Libero - In attesa di ordinazione'}
+                            </p>
+                        </div>
+                        <button onClick={() => setSelectedTableId(null)} className="p-2 bg-white rounded-full shadow-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors border border-gray-200">
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-4 bg-gray-50/50">
+                        {!currentOrder || currentOrder.items.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-4">
+                                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center">
+                                    <ShoppingCart className="w-10 h-10 opacity-20" />
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-lg font-medium text-gray-600">Nessun ordine attivo</p>
+                                    <p className="text-sm">Seleziona i piatti dal menu a sinistra per aggiungerli</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-4 max-w-3xl mx-auto w-full">
+                                {groupedItems.map((item) => (
+                                    <div key={item.menuItemId} className="flex justify-between items-center p-4 bg-white rounded-xl border border-gray-200 shadow-sm hover:border-[--primary] transition-colors group">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 bg-[--primary]/10 rounded-full flex items-center justify-center text-[--primary] font-bold">
+                                                {item.quantity}x
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-gray-800 text-lg">{item.name}</h4>
+                                                <p className="text-sm text-gray-500">€ {item.price.toFixed(2)} cad.</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-6">
+                                            <span className="font-bold text-lg text-gray-800 w-24 text-right">
+                                                € {item.totalPrice.toFixed(2)}
+                                            </span>
+                                            <button 
+                                                onClick={() => handleRemoveFromOrder(item.menuItemId)}
+                                                className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-100 md:opacity-0 group-hover:opacity-100"
+                                                title="Rimuovi"
+                                            >
+                                                <Trash2 className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="p-4 border-t border-gray-200 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] shrink-0 z-40">
+                        <div className="flex justify-between items-center mb-4 max-w-3xl mx-auto w-full">
+                            <span className="text-gray-500 font-medium">Totale Complessivo</span>
+                            <span className="text-3xl font-bold text-[--primary]">€ {currentTotal.toFixed(2)}</span>
+                        </div>
+                        <div className="flex gap-3 max-w-3xl mx-auto w-full">
+                            {currentOrder && currentOrder.items.length > 0 && (
+                                <Bottone 
+                                    onClick={handleCloseOrder}
+                                    variante="pericolo"
+                                    className="flex-1 py-4 text-lg"
+                                >
+                                    Chiudi Conto e Libera
+                                </Bottone>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
-
-        {/* Right Sidebar: Order Detail Overlay */}
-        {selectedTableId && (
-            <div className="absolute right-0 top-0 bottom-0 w-[85%] md:w-[400px] z-50 bg-white/95 backdrop-blur shadow-2xl border-l border-gray-200 flex flex-col animate-in slide-in-from-right duration-300">
-                <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-                    <div>
-                        <h2 className="font-bold text-lg text-gray-800">{selectedTableLabel}</h2>
-                        <p className="text-sm text-gray-500">
-                            {currentOrder ? 'Occupato' : 'Libero'}
-                        </p>
-                    </div>
-                    <button onClick={() => setSelectedTableId(null)} className="p-2 bg-white rounded-full shadow-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100">
-                        <X className="w-5 h-5" />
-                    </button>
-                </div>
-                
-                {/* Current Order List */}
-                <div className="flex-1 overflow-y-auto p-4">
-                    <h3 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                        <ShoppingCart className="w-4 h-4" /> Ordine Corrente
-                    </h3>
-                    {groupedItems.length > 0 ? (
-                        <ul className="space-y-2">
-                            {groupedItems.map(item => (
-                                <li key={item.menuItemId} className="flex justify-between items-center bg-gray-50 p-2 rounded border border-gray-100">
-                                    <div>
-                                        <div className="font-medium text-sm">{item.name}</div>
-                                        <div className="text-xs text-gray-500">€ {item.price.toFixed(2)} x {item.quantity}</div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-bold text-sm">€ {item.totalPrice.toFixed(2)}</span>
-                                        <button 
-                                            onClick={() => handleRemoveFromOrder(item.menuItemId)}
-                                            className="text-red-400 hover:text-red-600 p-1"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p className="text-gray-400 text-sm italic">Nessun ordine attivo</p>
-                    )}
-                </div>
-
-                {/* Total & Actions */}
-                <div className="p-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
-                    <div className="flex justify-between items-center mb-4">
-                        <span className="font-bold text-gray-700">Totale</span>
-                        <span className="font-bold text-xl text-[--primary]">€ {currentTotal.toFixed(2)}</span>
-                    </div>
-                    {currentOrder && (
-                        <Bottone variante="pericolo" pienaLarghezza onClick={handleCloseOrder}>
-                            Libera Tavolo / Chiudi Conto
-                        </Bottone>
-                    )}
-                </div>
-            </div>
-        )}
       </div>
     </div>
   );
