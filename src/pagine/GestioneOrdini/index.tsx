@@ -413,42 +413,39 @@ export default function GestioneOrdini() {
       />
 
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Left Sidebar: Tables List */}
-        <div className="w-[30%] min-w-[100px] max-w-[300px] bg-white border-r border-gray-200 flex flex-col shadow-lg shrink-0 z-20">
-            <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+        {/* Left Sidebar: Tables List (20% width) */}
+        <div className="w-[20%] border-r border-gray-200 flex flex-col shadow-lg shrink-0 z-20 bg-white">
+            <div className="p-[1vw] border-b border-gray-200 bg-gray-50 flex justify-between items-center h-[5%] min-h-[40px]">
                 <div>
-                    <h2 className="font-bold text-lg text-gray-800">Tavoli</h2>
-                    <p className="text-sm text-gray-500 hidden sm:block">Seleziona un tavolo</p>
+                    <h2 className="font-bold text-gray-800" style={{ fontSize: '1.2vw' }}>Tavoli</h2>
                 </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-2">
-                <div className="flex flex-col gap-3">
+            <div className="flex-1 overflow-y-auto p-[0.5vw]">
+                <div className="flex flex-col gap-[0.5vw]">
                     {tables.map(table => {
                         const isOccupied = getTableStroke(table.id) === '#ef4444';
                         const isSelected = selectedTableId === table.id;
                         return (
-                            <div key={table.id} className="flex flex-col gap-2">
+                            <div key={table.id} className="flex flex-col gap-[0.5vw]">
                                 <button
                                     onClick={() => {
                                         handleTableSelect(table.id);
-                                        // Reset category when switching tables? Optional.
-                                        // setActiveCategory(null);
                                     }}
-                                    className={`w-full p-4 rounded-xl border-2 transition-all flex items-center justify-between ${
+                                    className={`w-full p-[1vw] rounded-xl border transition-all flex items-center justify-between ${
                                         isOccupied 
                                         ? 'bg-red-50 border-red-200 hover:border-red-400' 
                                         : 'bg-green-50 border-green-200 hover:border-green-400'
                                     } ${isSelected ? 'ring-2 ring-[--primary] ring-offset-2' : ''}`}
                                 >
-                                    <span className="font-bold text-gray-700 text-lg">{table.label || 'Tavolo'}</span>
-                                    <span className={`text-xs px-3 py-1 rounded-full font-medium ${isOccupied ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                                    <span className="font-bold text-gray-700" style={{ fontSize: '1vw' }}>{table.label || 'Tavolo'}</span>
+                                    <span className={`px-[0.5vw] py-[0.1vw] rounded-full font-medium ${isOccupied ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`} style={{ fontSize: '0.7vw' }}>
                                         {isOccupied ? 'Occupato' : 'Libero'}
                                     </span>
                                 </button>
                                 
                                 {/* Categories and Items - Only visible if table is selected */}
                                 {isSelected && (
-                                    <div className="ml-4 pl-4 border-l-2 border-gray-200 flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="ml-[1vw] pl-[1vw] border-l-2 border-gray-200 flex flex-col gap-[0.5vw] animate-in fade-in slide-in-from-top-2 duration-200">
                                         {CATEGORIES.map(cat => {
                                             const isCatActive = activeCategory === cat;
                                             const catItems = menuItems.filter(i => i.category === cat && i.available);
@@ -457,34 +454,36 @@ export default function GestioneOrdini() {
                                                 <div key={cat} className="flex flex-col">
                                                     <button
                                                         onClick={() => setActiveCategory(isCatActive ? null : cat)}
-                                                        className={`text-left px-3 py-2 rounded-lg font-medium text-sm flex justify-between items-center transition-colors ${
+                                                        className={`text-left px-[0.5vw] py-[0.5vw] rounded-lg font-medium flex justify-between items-center transition-colors ${
                                                             isCatActive 
                                                             ? 'bg-[--primary] text-white shadow-sm' 
                                                             : 'text-gray-600 hover:bg-gray-100'
                                                         }`}
+                                                        style={{ fontSize: '0.9vw' }}
                                                     >
                                                         {cat}
-                                                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${isCatActive ? 'bg-white/20' : 'bg-gray-200'}`}>
+                                                        <span className={`px-[0.3vw] py-[0.1vw] rounded-full ${isCatActive ? 'bg-white/20' : 'bg-gray-200'}`} style={{ fontSize: '0.7vw' }}>
                                                             {catItems.length}
                                                         </span>
                                                     </button>
                                                     
                                                     {/* Menu Items for this Category */}
                                                     {isCatActive && (
-                                                        <div className="mt-1 ml-2 flex flex-col gap-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                                                        <div className="mt-[0.2vw] ml-[0.5vw] flex flex-col gap-[0.2vw] animate-in fade-in slide-in-from-top-1 duration-150">
                                                             {catItems.length === 0 ? (
-                                                                <p className="text-xs text-gray-400 italic p-2">Nessun piatto</p>
+                                                                <p className="text-gray-400 italic p-[0.5vw]" style={{ fontSize: '0.7vw' }}>Nessun piatto</p>
                                                             ) : (
                                                                 catItems.map(item => (
                                                                     <button
                                                                         key={item.id}
                                                                         onClick={() => handleAddToOrder(item)}
-                                                                        className="text-left p-2 rounded hover:bg-orange-50 hover:text-orange-700 text-sm text-gray-600 border border-transparent hover:border-orange-100 transition-all flex justify-between items-center group"
+                                                                        className="text-left p-[0.5vw] rounded hover:bg-orange-50 hover:text-orange-700 text-gray-600 border border-transparent hover:border-orange-100 transition-all flex justify-between items-center group"
+                                                                        style={{ fontSize: '0.8vw' }}
                                                                     >
-                                                                        <span className="truncate pr-2">{item.name}</span>
-                                                                        <div className="flex items-center gap-2">
-                                                                            <span className="text-xs font-semibold">€{item.price.toFixed(2)}</span>
-                                                                            <Plus className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                                        <span className="truncate pr-[0.5vw]">{item.name}</span>
+                                                                        <div className="flex items-center gap-[0.5vw]">
+                                                                            <span className="font-semibold">€{item.price.toFixed(2)}</span>
+                                                                            <Plus className="opacity-0 group-hover:opacity-100 transition-opacity" style={{ width: '0.8vw', height: '0.8vw' }} />
                                                                         </div>
                                                                     </button>
                                                                 ))
@@ -503,8 +502,8 @@ export default function GestioneOrdini() {
             </div>
         </div>
 
-        {/* Center: Canvas Area */}
-        <div className="flex-1 overflow-hidden bg-gray-100 relative">
+        {/* Center: Canvas Area (50% width) */}
+        <div className="w-[50%] overflow-hidden bg-gray-100 relative">
             <div 
                 ref={containerRef}
                 className="w-full h-full"
@@ -550,56 +549,58 @@ export default function GestioneOrdini() {
                     </Layer>
                 </Stage>
             </div>
+        </div>
 
-            {/* Order Detail Overlay - Covers the map when a table is selected */}
-            {selectedTableId && (
-                <div className="absolute inset-0 z-50 bg-white/95 backdrop-blur shadow-2xl flex flex-col animate-in fade-in duration-300">
-                    <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between shadow-sm shrink-0">
+        {/* Right Sidebar: Order Detail (30% width) - Always Visible */}
+        <div className="w-[30%] border-l border-gray-200 flex flex-col shadow-lg shrink-0 z-20 bg-white">
+            {selectedTableId ? (
+                <>
+                    <div className="p-[1vw] border-b border-gray-200 bg-gray-50 flex items-center justify-between h-[5%] min-h-[40px]">
                         <div>
-                            <h2 className="font-bold text-lg text-gray-800">{selectedTableLabel}</h2>
-                            <p className="text-sm text-gray-500">
-                                {currentOrder ? 'Occupato - Ordine in corso' : 'Libero - In attesa di ordinazione'}
+                            <h2 className="font-bold text-gray-800" style={{ fontSize: '1.2vw' }}>{selectedTableLabel}</h2>
+                            <p className="text-gray-500" style={{ fontSize: '0.8vw' }}>
+                                {currentOrder ? 'Occupato' : 'Libero'}
                             </p>
                         </div>
-                        <button onClick={() => setSelectedTableId(null)} className="p-2 bg-white rounded-full shadow-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors border border-gray-200">
-                            <X className="w-5 h-5" />
+                        <button onClick={() => setSelectedTableId(null)} className="p-[0.5vw] bg-white rounded-full shadow-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors border border-gray-200">
+                            <X style={{ width: '1.2vw', height: '1.2vw' }} />
                         </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-4 bg-gray-50/50">
+                    <div className="flex-1 overflow-y-auto p-[1vw] bg-gray-50/50">
                         {!currentOrder || currentOrder.items.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-4">
-                                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center">
-                                    <ShoppingCart className="w-10 h-10 opacity-20" />
+                            <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-[1vw]">
+                                <div className="w-[5vw] h-[5vw] bg-gray-100 rounded-full flex items-center justify-center">
+                                    <ShoppingCart className="opacity-20" style={{ width: '2.5vw', height: '2.5vw' }} />
                                 </div>
                                 <div className="text-center">
-                                    <p className="text-lg font-medium text-gray-600">Nessun ordine attivo</p>
-                                    <p className="text-sm">Seleziona i piatti dal menu a sinistra per aggiungerli</p>
+                                    <p className="font-medium text-gray-600" style={{ fontSize: '1vw' }}>Nessun ordine attivo</p>
+                                    <p style={{ fontSize: '0.8vw' }}>Seleziona i piatti dal menu a sinistra</p>
                                 </div>
                             </div>
                         ) : (
-                            <div className="space-y-4 max-w-3xl mx-auto w-full">
+                            <div className="space-y-[1vw] w-full">
                                 {groupedItems.map((item) => (
-                                    <div key={item.menuItemId} className="flex justify-between items-center p-4 bg-white rounded-xl border border-gray-200 shadow-sm hover:border-[--primary] transition-colors group">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 bg-[--primary]/10 rounded-full flex items-center justify-center text-[--primary] font-bold">
+                                    <div key={item.menuItemId} className="flex justify-between items-center p-[1vw] bg-white rounded-xl border border-gray-200 shadow-sm hover:border-[--primary] transition-colors group">
+                                        <div className="flex items-center gap-[1vw]">
+                                            <div className="w-[2.5vw] h-[2.5vw] bg-[--primary]/10 rounded-full flex items-center justify-center text-[--primary] font-bold" style={{ fontSize: '0.9vw' }}>
                                                 {item.quantity}x
                                             </div>
                                             <div>
-                                                <h4 className="font-bold text-gray-800 text-lg">{item.name}</h4>
-                                                <p className="text-sm text-gray-500">€ {item.price.toFixed(2)} cad.</p>
+                                                <h4 className="font-bold text-gray-800" style={{ fontSize: '1vw' }}>{item.name}</h4>
+                                                <p className="text-gray-500" style={{ fontSize: '0.8vw' }}>€ {item.price.toFixed(2)} cad.</p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-6">
-                                            <span className="font-bold text-lg text-gray-800 w-24 text-right">
+                                        <div className="flex items-center gap-[1vw]">
+                                            <span className="font-bold text-gray-800 text-right" style={{ fontSize: '1vw' }}>
                                                 € {item.totalPrice.toFixed(2)}
                                             </span>
                                             <button 
                                                 onClick={() => handleRemoveFromOrder(item.menuItemId)}
-                                                className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-100 md:opacity-0 group-hover:opacity-100"
+                                                className="p-[0.5vw] text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                                 title="Rimuovi"
                                             >
-                                                <Trash2 className="w-5 h-5" />
+                                                <Trash2 style={{ width: '1.2vw', height: '1.2vw' }} />
                                             </button>
                                         </div>
                                     </div>
@@ -608,22 +609,33 @@ export default function GestioneOrdini() {
                         )}
                     </div>
 
-                    <div className="p-4 border-t border-gray-200 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] shrink-0 z-40">
-                        <div className="flex justify-between items-center mb-4 max-w-3xl mx-auto w-full">
-                            <span className="text-gray-500 font-medium">Totale Complessivo</span>
-                            <span className="text-3xl font-bold text-[--primary]">€ {currentTotal.toFixed(2)}</span>
+                    <div className="p-[1vw] border-t border-gray-200 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] shrink-0 z-40">
+                        <div className="flex justify-between items-center mb-[1vw] w-full">
+                            <span className="text-gray-500 font-medium" style={{ fontSize: '1vw' }}>Totale Complessivo</span>
+                            <span className="font-bold text-[--primary]" style={{ fontSize: '1.5vw' }}>€ {currentTotal.toFixed(2)}</span>
                         </div>
-                        <div className="flex gap-3 max-w-3xl mx-auto w-full">
+                        <div className="flex gap-[1vw] w-full">
                             {currentOrder && currentOrder.items.length > 0 && (
                                 <Bottone 
                                     onClick={handleCloseOrder}
                                     variante="pericolo"
-                                    className="flex-1 py-4 text-lg"
+                                    className="flex-1"
+                                    style={{ fontSize: '1vw', padding: '1vw' }}
                                 >
                                     Chiudi Conto e Libera
                                 </Bottone>
                             )}
                         </div>
+                    </div>
+                </>
+            ) : (
+                <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-[1vw] p-[2vw]">
+                    <div className="w-[6vw] h-[6vw] bg-gray-100 rounded-full flex items-center justify-center">
+                        <ShoppingCart className="opacity-20" style={{ width: '3vw', height: '3vw' }} />
+                    </div>
+                    <div className="text-center">
+                        <p className="font-medium text-gray-600" style={{ fontSize: '1.2vw' }}>Conto</p>
+                        <p style={{ fontSize: '0.9vw' }}>Seleziona un tavolo per visualizzare il conto</p>
                     </div>
                 </div>
             )}
