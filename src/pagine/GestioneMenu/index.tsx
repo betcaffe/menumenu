@@ -18,6 +18,7 @@ export default function GestioneMenu() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<MenuCategory>('Antipasti');
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
+  const [priceInputValue, setPriceInputValue] = useState<string>('0');
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [modalCategory, setModalCategory] = useState<MenuCategory | null>(null);
 
@@ -60,11 +61,13 @@ export default function GestioneMenu() {
       available: true,
       description: ''
     });
+    setPriceInputValue('0');
     setIsModalOpen(true);
   };
 
   const handleEditItem = (item: MenuItem) => {
     setEditingItem({ ...item });
+    setPriceInputValue(item.price.toString());
     setIsModalOpen(true);
   };
 
@@ -279,7 +282,7 @@ export default function GestioneMenu() {
       </div>
 
       {isCategoryModalOpen && modalCategory && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm pb-24">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden">
             <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
               <h3 className="font-bold text-lg">{modalCategory}</h3>
@@ -334,7 +337,7 @@ export default function GestioneMenu() {
 
       {/* Edit/Add Modal */}
       {isModalOpen && editingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm pb-24 md:pb-4">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
                 <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
                     <h3 className="font-bold text-lg">
@@ -360,8 +363,26 @@ export default function GestioneMenu() {
                             label="Prezzo (€)"
                             type="number" 
                             step="0.50"
-                            value={editingItem.price}
-                            onChange={e => setEditingItem({...editingItem, price: parseFloat(e.target.value) || 0})}
+                            min="0"
+                            value={priceInputValue}
+                            onChange={e => {
+                                const val = e.target.value;
+                                // Impedisce valori negativi
+                                if (parseFloat(val) < 0) return;
+                                
+                                setPriceInputValue(val);
+                                setEditingItem({...editingItem, price: parseFloat(val) || 0});
+                            }}
+                            onFocus={e => {
+                                if (priceInputValue === '0') {
+                                    setPriceInputValue('');
+                                }
+                            }}
+                            onBlur={e => {
+                                if (priceInputValue === '') {
+                                    setPriceInputValue('0');
+                                }
+                            }}
                         />
                         <Select 
                             label="Categoria"

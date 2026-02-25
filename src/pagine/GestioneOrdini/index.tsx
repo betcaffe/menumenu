@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Stage, Layer, Rect, Group } from 'react-konva';
-import { ShoppingCart, Plus, Trash2, X, ClipboardList, Utensils, Wine } from 'lucide-react';
+import { ShoppingCart, Plus, Trash2, X, ClipboardList, Utensils, Wine, Search } from 'lucide-react';
 import ElementoCanvas from '../DisegnaRistorante/ElementoCanvas';
 import { Elemento } from '../DisegnaRistorante/types';
 import { MenuItem, MenuCategory, CATEGORIES, Order } from '../GestioneMenu/types';
@@ -26,7 +26,7 @@ export default function GestioneOrdini() {
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [mobileModalOpen, setMobileModalOpen] = useState(false);
-  const [mobileCategory, setMobileCategory] = useState<MenuCategory | null>(null);
+  const [mobileSearchQuery, setMobileSearchQuery] = useState('');
   const [mobileSelections, setMobileSelections] = useState<Record<string, { item: MenuItem, qty: number }>>({});
   
   const containerRef = useRef<HTMLDivElement>(null);
@@ -463,7 +463,7 @@ export default function GestioneOrdini() {
                               setSelectedTableId(table.id);
                               if (window.matchMedia('(max-width: 767px)').matches) {
                                 setMobileModalOpen(true);
-                                setMobileCategory(null);
+                                setMobileSearchQuery('');
                                 setMobileSelections({});
                               } else {
                                 setActiveCategory(null);
@@ -478,7 +478,7 @@ export default function GestioneOrdini() {
                                 }
                             />
                             
-                            {/* Categories and Items - Re-added to preserve functionality */}
+                            {/* Search bar and filtered items */}
                         {isSelected && (
                             <div className="hidden md:flex md:flex-col pl-4 border-l-4 border-gray-200 gap-3 animate-in fade-in slide-in-from-top-2 duration-200 bg-gray-50/50 p-2">
                                     {CATEGORIES.map(cat => {
@@ -514,8 +514,8 @@ export default function GestioneOrdini() {
                                                                 >
                                                                     <span className="truncate pr-2">{item.name}</span>
                                                                     <div className="flex items-center gap-2">
-                                                                        <span className="font-semibold">€{item.price.toFixed(2)}</span>
-                                                                        <Plus className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                                        <span className="font-semibold hidden md:inline text-xs">€{item.price.toFixed(2)}</span>
+                                                                        <Plus className="w-4 h-4 text-[--primary] opacity-0 group-hover:opacity-100 transition-opacity" />
                                                                     </div>
                                                                 </button>
                                                             ))
@@ -672,7 +672,7 @@ export default function GestioneOrdini() {
         </SidebarContainer>
       </div>
       {mobileModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center md:hidden">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center md:hidden pb-20">
           <div className="absolute inset-0 bg-black/40" onClick={() => setMobileModalOpen(false)}></div>
           <div className="bg-white rounded-2xl w-[92%] max-w-md shadow-2xl p-4 relative">
             <div className="flex items-center justify-between mb-3">
@@ -681,65 +681,93 @@ export default function GestioneOrdini() {
                 <X className="w-6 h-6" />
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              {CATEGORIES.map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setMobileCategory(cat)}
-                  className={`p-3 rounded-lg font-medium text-center ${mobileCategory === cat ? 'bg-[--primary] text-white' : 'bg-gray-100 text-gray-700'}`}
-                >
-                  {cat}
-                </button>
-              ))}
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Cerca piatto..."
+                value={mobileSearchQuery}
+                onChange={(e) => setMobileSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-3 py-3 bg-gray-100 border-none rounded-xl text-base focus:ring-2 focus:ring-[--primary] outline-none transition-all"
+              />
             </div>
-            <div className="max-h-64 overflow-y-auto mb-3">
-              {mobileCategory ? (
-                <div className="grid grid-cols-1 gap-2">
-                  {menuItems.filter(i => i.category === mobileCategory && i.available).map(item => {
-                    const sel = mobileSelections[item.id];
-                    return (
-                      <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="min-w-0">
-                          <div className="font-medium text-gray-800 truncate">{item.name}</div>
-                          <div className="text-sm text-gray-500">€ {item.price.toFixed(2)}</div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => {
-                              const qty = (sel?.qty || 0) - 1;
-                              const next = { ...mobileSelections };
-                              if (qty <= 0) {
-                                delete next[item.id];
-                              } else {
-                                next[item.id] = { item, qty };
-                              }
-                              setMobileSelections(next);
-                            }}
-                            className="px-2 py-1 rounded bg-gray-100 text-gray-700"
-                          >
-                            -
-                          </button>
-                          <span className="w-8 text-center">{sel?.qty || 0}</span>
-                          <button
-                            onClick={() => {
-                              const qty = (sel?.qty || 0) + 1;
-                              setMobileSelections({ ...mobileSelections, [item.id]: { item, qty } });
-                            }}
-                            className="px-2 py-1 rounded bg-[--secondary] text-white"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center text-gray-400 p-4">Seleziona una categoria</div>
-              )}
+            <div className="max-h-80 overflow-y-auto mb-3">
+              <div className="grid grid-cols-1 gap-2">
+                {mobileSearchQuery === '' ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                        <Search className="w-12 h-12 mb-3 opacity-20" />
+                        <p className="italic text-sm text-center px-8">Inizia a digitare per cercare i piatti da aggiungere alla comanda...</p>
+                    </div>
+                ) : (
+                    menuItems
+                      .filter(item => {
+                        if (!item.available) return false;
+                        
+                        const queryTerms = mobileSearchQuery.toLowerCase().trim().split(/\s+/);
+                        const itemNameWords = item.name.toLowerCase().split(/\s+/);
+                        const categoryLower = item.category.toLowerCase();
+
+                        return queryTerms.every(term => 
+                          itemNameWords.some(word => word.startsWith(term)) ||
+                          categoryLower.startsWith(term)
+                        );
+                      })
+                      .map(item => {
+                        const sel = mobileSelections[item.id];
+                        return (
+                          <div key={item.id} className="flex items-center justify-between p-3 border rounded-xl bg-white shadow-sm">
+                            <div className="min-w-0">
+                              <div className="font-bold text-gray-800 truncate">{item.name}</div>
+                              <div className="text-[10px] text-gray-400 uppercase tracking-wider">{item.category}</div>
+                              <div className="text-sm text-gray-500 hidden md:block">€ {item.price.toFixed(2)}</div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={() => {
+                                  const qty = (sel?.qty || 0) - 1;
+                                  const next = { ...mobileSelections };
+                                  if (qty <= 0) {
+                                    delete next[item.id];
+                                  } else {
+                                    next[item.id] = { item, qty };
+                                  }
+                                  setMobileSelections(next);
+                                }}
+                                className="w-8 h-8 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center font-bold"
+                              >
+                                -
+                              </button>
+                              <span className="w-6 text-center font-bold text-lg">{sel?.qty || 0}</span>
+                              <button
+                                onClick={() => {
+                                  const qty = (sel?.qty || 0) + 1;
+                                  setMobileSelections({ ...mobileSelections, [item.id]: { item, qty } });
+                                }}
+                                className="w-8 h-8 rounded-full bg-[--secondary] text-white flex items-center justify-center font-bold"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                )}
+                {mobileSearchQuery !== '' && menuItems.filter(item => {
+                  if (!item.available) return false;
+                  const queryTerms = mobileSearchQuery.toLowerCase().trim().split(/\s+/);
+                  const itemNameWords = item.name.toLowerCase().split(/\s+/);
+                  const categoryLower = item.category.toLowerCase();
+                  return queryTerms.every(term => 
+                    itemNameWords.some(word => word.startsWith(term)) ||
+                    categoryLower.startsWith(term)
+                  );
+                }).length === 0 && (
+                  <div className="text-center text-gray-400 p-8 italic">Nessun piatto trovato</div>
+                )}
+              </div>
             </div>
             <div className="border-t pt-3">
-              <div className="flex justify-between items-center mb-2">
+              <div className="flex justify-between items-center mb-2 hidden md:flex">
                 <span className="text-gray-600 font-medium">Articoli selezionati</span>
                 <span className="text-[--primary] font-bold">
                   € {Object.values(mobileSelections).reduce((sum, s) => sum + s.item.price * s.qty, 0).toFixed(2)}

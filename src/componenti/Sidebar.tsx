@@ -61,7 +61,7 @@ interface SidebarItemProps {
   active?: boolean;
   onClick?: () => void;
   rightElement?: ReactNode;
-  color?: 'default' | 'green' | 'red';
+  color?: 'default' | 'green' | 'red' | 'blue' | 'orange';
 }
 
 export function SidebarItem({ 
@@ -86,6 +86,16 @@ export function SidebarItem({
       activeClass = 'bg-red-50 border-r-4 border-r-red-500 text-red-700';
       inactiveClass = 'bg-white text-gray-600 hover:bg-red-50 border-r-4 border-r-transparent hover:border-r-red-200';
       iconClass = active ? 'text-red-500' : 'text-gray-400';
+      break;
+    case 'blue':
+      activeClass = 'bg-blue-50 border-r-4 border-r-blue-500 text-blue-700';
+      inactiveClass = 'bg-white text-gray-600 hover:bg-blue-50 border-r-4 border-r-transparent hover:border-r-blue-200';
+      iconClass = active ? 'text-blue-500' : 'text-gray-400';
+      break;
+    case 'orange':
+      activeClass = 'bg-orange-50 border-r-4 border-r-orange-500 text-orange-700';
+      inactiveClass = 'bg-white text-gray-600 hover:bg-orange-50 border-r-4 border-r-transparent hover:border-r-orange-200';
+      iconClass = active ? 'text-orange-500' : 'text-gray-400';
       break;
     default:
       activeClass = 'bg-orange-50 border-r-4 border-r-[--primary] text-[--primary]';
