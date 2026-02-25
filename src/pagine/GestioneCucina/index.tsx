@@ -144,12 +144,14 @@ export default function GestioneCucina() {
                     // Key includes status to keep pending and served items separate
                     const key = `${i.menu_item_id}-${status}`;
                     
-                    if (groupedItemsMap[key]) {
-                        groupedItemsMap[key].quantity += i.quantity;
+                    const existing = groupedItemsMap[key];
+                    if (existing) {
+                        existing.quantity += i.quantity;
                         // Keep the IDs in an array if we need to update multiple rows
-                        if (i.id) {
-                            if (!groupedItemsMap[key].id.includes(i.id)) {
-                                groupedItemsMap[key].id += `,${i.id}`;
+                        if (i.id && existing.id) {
+                            const ids = existing.id.split(',');
+                            if (!ids.includes(i.id)) {
+                                existing.id = [...ids, i.id].join(',');
                             }
                         }
                     } else {

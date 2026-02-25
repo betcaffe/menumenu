@@ -151,11 +151,13 @@ export default function GestioneBar() {
                     const status = i.status || 'pending';
                     const key = `${i.menu_item_id}-${status}`;
                     
-                    if (groupedItemsMap[key]) {
-                        groupedItemsMap[key].quantity += i.quantity;
-                        if (i.id) {
-                            if (!groupedItemsMap[key].id.includes(i.id)) {
-                                groupedItemsMap[key].id += `,${i.id}`;
+                    const existing = groupedItemsMap[key];
+                    if (existing) {
+                        existing.quantity += i.quantity;
+                        if (i.id && existing.id) {
+                            const ids = existing.id.split(',');
+                            if (!ids.includes(i.id)) {
+                                existing.id = [...ids, i.id].join(',');
                             }
                         }
                     } else {
