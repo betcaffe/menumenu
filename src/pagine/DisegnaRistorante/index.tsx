@@ -337,30 +337,6 @@ export default function DisegnaRistorante() {
   };
 
   const creaStanza = () => {
-    // 1. Get container dimensions
-    const containerWidth = containerRef.current?.offsetWidth || window.innerWidth;
-    const containerHeight = containerRef.current?.offsetHeight || window.innerHeight;
-
-    // 2. Define margins (3 cells padding on all sides approx)
-    const marginPixels = 3 * GRID_SIZE;
-    const availableWidth = containerWidth - (marginPixels * 2);
-    const availableHeight = containerHeight - (marginPixels * 2);
-
-    // 3. Calculate required pixels per meter to fit width and height
-    const pixelsPerMeterX = availableWidth / roomDimensions.width;
-    const pixelsPerMeterY = availableHeight / roomDimensions.height;
-
-    // 4. Choose the smaller scale to ensure it fits both dimensions
-    let newPixelsPerMeter = Math.min(pixelsPerMeterX, pixelsPerMeterY);
-    
-    // Clamp to a reasonable maximum (standard view) so small rooms don't explode
-    newPixelsPerMeter = Math.min(newPixelsPerMeter, 4 * GRID_SIZE);
-
-    // Keep fixed metric: 1 cell = 1 meter
-
-    // 5. Create Room Elements (in METERS)
-    const WALL_THICKNESS = 0.25; // 25cm
-    
     // Start position: 1 meter from top/left (arbitrary logical position)
     const startX = 1.0; 
     const startY = 1.0;
