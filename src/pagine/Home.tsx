@@ -1,24 +1,25 @@
 import { Link } from 'react-router-dom';
-import { ChefHat, PenTool, ClipboardList } from 'lucide-react';
+import { ChefHat, PenTool, ClipboardList, LogIn, UserPlus, Settings, Layers } from 'lucide-react';
 import Bottone from '../componenti/Bottone';
 import Navbar from '../componenti/Navbar';
 import DashboardCard from '../componenti/DashboardCard';
 import { useAuth } from '../context/AuthContext';
+import MobileStickyBar from '../componenti/MobileStickyBar';
 
 export default function Home() {
   const { user } = useAuth();
 
   return (
-    <div className="flex flex-col min-h-screen bg-white">
+    <div className="flex flex-col min-h-screen bg-white pb-20 md:pb-0">
       {/* Navbar */}
       <Navbar 
         rightActions={
           !user && (
             <>
-              <Link to="/login" className="text-gray-600 hover:text-gray-900 font-medium px-4">
+              <Link to="/login" className="hidden md:inline-block text-gray-600 hover:text-gray-900 font-medium px-4">
                 Accedi
               </Link>
-              <Link to="/registrazione">
+              <Link to="/registrazione" className="hidden md:inline-block">
                 <Bottone>Inizia Gratis</Bottone>
               </Link>
             </>
@@ -40,7 +41,7 @@ export default function Home() {
             </p>
             <div className="flex justify-center gap-4">
               {user ? (
-                <Link to="/dashboard">
+                <Link to="/dashboard" className="hidden md:block">
                   <Bottone dimensione="lg" className="shadow-lg hover:shadow-xl transform transition-all hover:-translate-y-1">
                     Accedi alla Dashboard
                   </Bottone>
@@ -54,6 +55,8 @@ export default function Home() {
               )}
             </div>
           </div>
+          
+          
           
           {/* Decorative background elements */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full overflow-hidden -z-10 pointer-events-none opacity-10">
@@ -105,6 +108,25 @@ export default function Home() {
           <p>&copy; {new Date().getFullYear()} MenuMenu. Tutti i diritti riservati.</p>
         </div>
       </footer>
+      
+      {!user && (
+        <MobileStickyBar
+          activeKey="login"
+          items={[
+            { key: 'login', to: '/login', label: 'Accedi', icon: <LogIn className="w-6 h-6" />, className: 'bg-[--primary] text-white' },
+            { key: 'register', to: '/registrazione', label: 'Registrati', icon: <UserPlus className="w-6 h-6" />, className: 'bg-[--secondary] text-white' },
+          ]}
+        />
+      )}
+      {user && (
+        <MobileStickyBar
+          activeKey={undefined}
+          items={[
+            { key: 'settings', to: '/impostazioni', label: 'Impostazioni', icon: <Settings className="w-6 h-6" />, className: 'bg-[--primary] text-white' },
+            { key: 'gestione', to: '/gestione-ordini', label: 'Comande', icon: <Layers className="w-6 h-6" />, className: 'bg-[--secondary] text-white' },
+          ]}
+        />
+      )}
     </div>
   );
 }

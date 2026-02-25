@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import DisegnaRistorante from './pagine/DisegnaRistorante';
 import GestioneOrdini from './pagine/GestioneOrdini';
@@ -27,6 +28,21 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const handler = (e: MediaQueryListEvent | MediaQueryList) => {
+      // @ts-ignore
+      setIsMobile(e.matches ?? e.media ? mq.matches : false);
+    };
+    setIsMobile(mq.matches);
+    // @ts-ignore
+    mq.addEventListener ? mq.addEventListener('change', handler) : mq.addListener(handler);
+    return () => {
+      // @ts-ignore
+      mq.removeEventListener ? mq.removeEventListener('change', handler) : mq.removeListener(handler);
+    };
+  }, []);
   return (
     <AuthProvider>
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
@@ -34,9 +50,13 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
+              isMobile ? (
+                <Navigate to="/" replace />
+              ) : (
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              )
             } />
             <Route path="/impostazioni" element={
               <ProtectedRoute>
@@ -44,9 +64,13 @@ function App() {
               </ProtectedRoute>
             } />
             <Route path="/gestione-comande" element={
-              <ProtectedRoute>
-                <GestioneComande />
-              </ProtectedRoute>
+              isMobile ? (
+                <Navigate to="/gestione-ordini" replace />
+              ) : (
+                <ProtectedRoute>
+                  <GestioneComande />
+                </ProtectedRoute>
+              )
             } />
             <Route path="/disegna" element={
               <ProtectedRoute>

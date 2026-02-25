@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { ChefHat, Plus, Edit2, Trash2, X, ArrowLeft, Menu as MenuIcon } from 'lucide-react';
+import { ChefHat, Plus, Edit2, Trash2, X, Menu as MenuIcon, PenTool, LayoutGrid } from 'lucide-react';
 import Bottone from '../../componenti/Bottone';
 import Navbar from '../../componenti/Navbar';
+import MobileStickyBar from '../../componenti/MobileStickyBar';
 import Input from '../../componenti/Input';
 import Textarea from '../../componenti/Textarea';
 import Select from '../../componenti/Select';
@@ -18,6 +19,8 @@ export default function GestioneMenu() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<MenuCategory>('Antipasti');
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [modalCategory, setModalCategory] = useState<MenuCategory | null>(null);
 
   // Load menu from Supabase on mount
   useEffect(() => {
@@ -169,22 +172,10 @@ export default function GestioneMenu() {
       <Navbar 
         title="Gestione Menu"
         icon={<ChefHat className="w-6 h-6 sm:w-8 sm:h-8" />}
-        leftActions={
-           <Link to="/impostazioni" className="text-gray-500 hover:text-[--secondary] p-1">
-             <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
-           </Link>
-        }
-        pageActions={
-           <Bottone onClick={handleAddItem} className="hidden sm:flex">
-             <Plus className="w-5 h-5 mr-2" />
-             Nuovo Piatto
-           </Bottone>
-        }
       />
 
       <div className="flex-1 flex overflow-hidden mt-16 sm:mt-20">
-        {/* Sidebar Categorie */}
-        <SidebarContainer className="w-64 flex-shrink-0 hidden md:flex border-r border-gray-200 z-10">
+        <SidebarContainer className="w-full md:w-64 flex-shrink-0 border-r md:border-gray-200 z-10 bg-white">
             <div className="p-4 bg-orange-50 border-b border-orange-100">
                 <h2 className="font-bold text-gray-800 flex items-center gap-2">
                     <MenuIcon className="w-5 h-5 text-[--primary]" />
@@ -197,7 +188,13 @@ export default function GestioneMenu() {
                         key={category}
                         label={category}
                         active={activeCategory === category}
-                        onClick={() => setActiveCategory(category)}
+                        onClick={() => {
+                          setActiveCategory(category);
+                          if (window.matchMedia('(max-width: 767px)').matches) {
+                            setModalCategory(category);
+                            setIsCategoryModalOpen(true);
+                          }
+                        }}
                         rightElement={
                             <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full">
                                 {menuItems.filter(i => i.category === category).length}
@@ -208,26 +205,9 @@ export default function GestioneMenu() {
             </div>
         </SidebarContainer>
 
-        {/* Mobile Category Selector (Dropdown style or horizontal scroll backup) */}
-        <div className="md:hidden w-full bg-white border-b border-gray-200 p-2 overflow-x-auto whitespace-nowrap fixed top-16 left-0 right-0 z-20">
-             {CATEGORIES.map(category => (
-                <button
-                    key={category}
-                    onClick={() => setActiveCategory(category)}
-                    className={`px-4 py-2 rounded-full text-sm mr-2 transition-colors ${
-                        activeCategory === category
-                            ? 'bg-[--secondary] text-white'
-                            : 'bg-gray-100 text-gray-600'
-                    }`}
-                >
-                    {category}
-                </button>
-            ))}
-        </div>
-
-        {/* Content Area */}
+        {/* Content Area (desktop) */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-8 w-full relative">
-            <div className="max-w-4xl mx-auto">
+            <div className="hidden md:block max-w-4xl mx-auto">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold text-gray-800">{activeCategory}</h2>
                     <span className="text-gray-500 text-sm">
@@ -242,10 +222,6 @@ export default function GestioneMenu() {
                         </div>
                         <h3 className="text-lg font-medium text-gray-900 mb-1">Nessun piatto in questa categoria</h3>
                         <p className="text-gray-500 mb-6 max-w-sm">Inizia ad aggiungere i tuoi piatti per creare il menu perfetto per i tuoi clienti.</p>
-                        <Bottone variante="primario" onClick={handleAddItem}>
-                            <Plus className="w-4 h-4 mr-2" />
-                            Aggiungi Piatto
-                        </Bottone>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 gap-4">
@@ -291,17 +267,71 @@ export default function GestioneMenu() {
                         ))}
                     </div>
                 )}
-                
-                {/* Mobile Add Button (Floating) */}
-                <button 
-                    onClick={handleAddItem}
-                    className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-[--primary] text-white rounded-full shadow-lg flex items-center justify-center hover:bg-orange-600 transition-colors z-30"
-                >
-                    <Plus className="w-8 h-8" />
-                </button>
             </div>
+
+            {/* Floating Add Button */}
+            <button 
+                onClick={handleAddItem}
+                className="fixed bottom-24 right-6 w-14 h-14 bg-[--primary] text-white rounded-full shadow-lg flex items-center justify-center hover:bg-[--secondary] transition-colors z-50 md:bottom-6"
+            >
+                <Plus className="w-8 h-8" />
+            </button>
         </div>
       </div>
+
+      {isCategoryModalOpen && modalCategory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden">
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+              <h3 className="font-bold text-lg">{modalCategory}</h3>
+              <button onClick={() => setIsCategoryModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-1 gap-3">
+                {menuItems.filter(i => i.category === modalCategory).map(item => (
+                  <div key={item.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-bold text-gray-800 truncate" title={item.name}>{item.name}</h3>
+                      <span className="text-sm font-bold text-[--primary] bg-orange-50 px-2 py-1 rounded-md whitespace-nowrap">
+                        € {item.price.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-gray-500 text-sm truncate mr-4" title={item.description || 'Nessuna descrizione'}>
+                        {item.description || 'Nessuna descrizione'}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => {
+                            handleEditItem(item);
+                            setIsCategoryModalOpen(false);
+                          }}
+                          className="px-3 py-1.5 text-[--secondary] hover:bg-blue-50 rounded-md transition-colors text-sm font-medium"
+                          title="Modifica"
+                        >
+                          Modifica
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteItem(item.id)}
+                          className="px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors text-sm font-medium"
+                          title="Elimina"
+                        >
+                          Elimina
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {menuItems.filter(i => i.category === modalCategory).length === 0 && (
+                  <div className="text-center text-gray-400 py-12">Nessun piatto in questa categoria</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit/Add Modal */}
       {isModalOpen && editingItem && (
@@ -386,6 +416,16 @@ export default function GestioneMenu() {
             </div>
         </div>
       )}
+
+      <MobileStickyBar
+        activeKey="menu"
+        defaultInactiveClass="bg-[--secondary] text-white"
+        defaultActiveClass="bg-[--primary] text-white"
+        items={[
+          { key: 'menu', to: '/gestione-menu', label: 'Menu', icon: <ChefHat className="w-6 h-6" /> },
+          { key: 'disegna', to: '/disegna', label: 'Disegna', icon: <PenTool className="w-6 h-6" /> },
+        ]}
+      />
     </div>
   );
 }

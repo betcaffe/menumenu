@@ -2,7 +2,7 @@ export interface Elemento {
   id: string;
   x: number;
   y: number;
-  type: 'rect' | 'wall' | 'text' | 'room' | 'door';
+  type: 'rect' | 'wall' | 'text' | 'room' | 'door' | 'bancone';
   label?: string;
   width?: number;
   height?: number;

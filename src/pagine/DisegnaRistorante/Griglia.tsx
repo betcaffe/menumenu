@@ -10,44 +10,44 @@ interface GrigliaProps {
 export default function Griglia({ stageSize, visibleRect, gridSize }: GrigliaProps) {
   const lines = [];
   const size = gridSize || GRID_SIZE;
+  const cellSize = size / 4; // Assuming gridSize is pixelsPerMeter (80px)
 
   // Determine drawing bounds
-  // If visibleRect is provided (e.g. when scaled/panned), use it to draw grid everywhere
-  // Otherwise default to stageSize starting from 0,0
   const startX = visibleRect ? Math.floor(visibleRect.x / size) * size : 0;
   const startY = visibleRect ? Math.floor(visibleRect.y / size) * size : 0;
   
   const endX = visibleRect ? Math.ceil((visibleRect.x + visibleRect.width) / size) * size : stageSize.width;
   const endY = visibleRect ? Math.ceil((visibleRect.y + visibleRect.height) / size) * size : stageSize.height;
 
-  // Add extra buffer just in case
-  const buffer = size * 5;
+  const buffer = size * 2;
   const renderStartX = startX - buffer;
   const renderStartY = startY - buffer;
   const renderEndX = endX + buffer;
   const renderEndY = endY + buffer;
 
   // Vertical lines
-  for (let i = renderStartX; i <= renderEndX; i += size) {
+  for (let i = renderStartX; i <= renderEndX; i += cellSize) {
+    const isMajor = Math.abs(i % size) < 0.1;
     lines.push(
       <Line
         key={`v-${i}`}
         points={[i, renderStartY, i, renderEndY]}
-        stroke="#e5e7eb"
-        strokeWidth={1}
+        stroke={isMajor ? "#d1d5db" : "#f3f4f6"}
+        strokeWidth={isMajor ? 1.5 : 1}
         listening={false}
       />
     );
   }
 
   // Horizontal lines
-  for (let i = renderStartY; i <= renderEndY; i += size) {
+  for (let i = renderStartY; i <= renderEndY; i += cellSize) {
+    const isMajor = Math.abs(i % size) < 0.1;
     lines.push(
       <Line
         key={`h-${i}`}
         points={[renderStartX, i, renderEndX, i]}
-        stroke="#e5e7eb"
-        strokeWidth={1}
+        stroke={isMajor ? "#d1d5db" : "#f3f4f6"}
+        strokeWidth={isMajor ? 1.5 : 1}
         listening={false}
       />
     );

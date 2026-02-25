@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Stage, Layer, Rect, Group } from 'react-konva';
-import { ShoppingCart, Plus, Trash2, X, ArrowLeft, ClipboardList } from 'lucide-react';
+import { ShoppingCart, Plus, Trash2, X, ClipboardList, Utensils, Wine } from 'lucide-react';
 import ElementoCanvas from '../DisegnaRistorante/ElementoCanvas';
 import { Elemento } from '../DisegnaRistorante/types';
 import { MenuItem, MenuCategory, CATEGORIES, Order } from '../GestioneMenu/types';
@@ -11,6 +11,7 @@ import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../supabaseClient';
 
 import { Sidebar as SidebarContainer, SidebarItem } from '../../componenti/Sidebar';
+import MobileStickyBar from '../../componenti/MobileStickyBar';
 
 export default function GestioneOrdini() {
   const { user } = useAuth();
@@ -25,6 +26,9 @@ export default function GestioneOrdini() {
   const [isLayoutReady, setIsLayoutReady] = useState(false);
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [isAddingItem, setIsAddingItem] = useState(false);
+  const [mobileModalOpen, setMobileModalOpen] = useState(false);
+  const [mobileCategory, setMobileCategory] = useState<MenuCategory | null>(null);
+  const [mobileSelections, setMobileSelections] = useState<Record<string, { item: MenuItem, qty: number }>>({});
   
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -432,20 +436,15 @@ export default function GestioneOrdini() {
   const tables = elementi.filter(el => el.type === 'rect');
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex flex-col h-screen bg-gray-50 pb-20 md:pb-0">
       <Navbar 
         title="Sala & Ordini"
         icon={<ClipboardList className="w-6 h-6 sm:w-8 sm:h-8" />}
-        leftActions={
-           <Link to="/gestione-comande" className="text-gray-500 hover:text-[--secondary] p-1">
-             <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
-           </Link>
-        }
       />
 
       <div className="flex-1 flex overflow-hidden mt-16 sm:mt-20">
         {/* Left Sidebar: Tables List (Fixed width) */}
-        <SidebarContainer className="w-64 border-r border-gray-200 flex flex-col shadow-lg shrink-0 z-20 bg-white">
+        <SidebarContainer className="w-full md:w-64 border-r md:border-gray-200 flex flex-col shadow-lg shrink-0 z-20 bg-white">
             <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
                 <h2 className="font-bold text-gray-800 text-lg">Tavoli</h2>
             </div>
@@ -461,7 +460,16 @@ export default function GestioneOrdini() {
                                 label={table.label || 'Tavolo'}
                                 active={isSelected}
                                 color={statusColor}
-                                onClick={() => handleTableSelect(table.id)}
+                            onClick={() => {
+                              setSelectedTableId(table.id);
+                              if (window.matchMedia('(max-width: 767px)').matches) {
+                                setMobileModalOpen(true);
+                                setMobileCategory(null);
+                                setMobileSelections({});
+                              } else {
+                                setActiveCategory(null);
+                              }
+                            }}
                                 rightElement={
                                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                         isOccupied ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
@@ -472,8 +480,8 @@ export default function GestioneOrdini() {
                             />
                             
                             {/* Categories and Items - Re-added to preserve functionality */}
-                            {isSelected && (
-                                <div className="pl-4 border-l-4 border-gray-200 flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-200 bg-gray-50/50 p-2">
+                        {isSelected && (
+                            <div className="hidden md:flex md:flex-col pl-4 border-l-4 border-gray-200 gap-3 animate-in fade-in slide-in-from-top-2 duration-200 bg-gray-50/50 p-2">
                                     {CATEGORIES.map(cat => {
                                         const isCatActive = activeCategory === cat;
                                         const catItems = menuItems.filter(i => i.category === cat && i.available);
@@ -527,7 +535,7 @@ export default function GestioneOrdini() {
         </SidebarContainer>
 
         {/* Center: Canvas Area (Flex grow) */}
-        <div className="flex-1 overflow-hidden bg-gray-100 relative">
+        <div className="hidden md:block flex-1 overflow-hidden bg-gray-100 relative">
             <div 
                 ref={containerRef}
                 className="w-full h-full"
@@ -576,7 +584,7 @@ export default function GestioneOrdini() {
         </div>
 
         {/* Right Sidebar: Order Detail (Fixed width) - Always Visible */}
-        <SidebarContainer className="w-80 border-l border-r-0 border-gray-200 flex flex-col shadow-lg shrink-0 z-20 bg-white">
+        <SidebarContainer className="hidden md:flex w-80 border-l border-r-0 border-gray-200 flex flex-col shadow-lg shrink-0 z-20 bg-white">
             {selectedTableId ? (
                 <>
                     <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between min-h-[60px]">
@@ -664,6 +672,125 @@ export default function GestioneOrdini() {
             )}
         </SidebarContainer>
       </div>
+      {mobileModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center md:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileModalOpen(false)}></div>
+          <div className="bg-white rounded-2xl w-[92%] max-w-md shadow-2xl p-4 relative">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-lg">{selectedTableLabel}</h3>
+              <button onClick={() => setMobileModalOpen(false)} className="text-gray-500 hover:text-gray-700">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              {CATEGORIES.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setMobileCategory(cat)}
+                  className={`p-3 rounded-lg font-medium text-center ${mobileCategory === cat ? 'bg-[--primary] text-white' : 'bg-gray-100 text-gray-700'}`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+            <div className="max-h-64 overflow-y-auto mb-3">
+              {mobileCategory ? (
+                <div className="grid grid-cols-1 gap-2">
+                  {menuItems.filter(i => i.category === mobileCategory && i.available).map(item => {
+                    const sel = mobileSelections[item.id];
+                    return (
+                      <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="min-w-0">
+                          <div className="font-medium text-gray-800 truncate">{item.name}</div>
+                          <div className="text-sm text-gray-500">€ {item.price.toFixed(2)}</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              const qty = (sel?.qty || 0) - 1;
+                              const next = { ...mobileSelections };
+                              if (qty <= 0) {
+                                delete next[item.id];
+                              } else {
+                                next[item.id] = { item, qty };
+                              }
+                              setMobileSelections(next);
+                            }}
+                            className="px-2 py-1 rounded bg-gray-100 text-gray-700"
+                          >
+                            -
+                          </button>
+                          <span className="w-8 text-center">{sel?.qty || 0}</span>
+                          <button
+                            onClick={() => {
+                              const qty = (sel?.qty || 0) + 1;
+                              setMobileSelections({ ...mobileSelections, [item.id]: { item, qty } });
+                            }}
+                            className="px-2 py-1 rounded bg-[--secondary] text-white"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center text-gray-400 p-4">Seleziona una categoria</div>
+              )}
+            </div>
+            <div className="border-t pt-3">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-gray-600 font-medium">Articoli selezionati</span>
+                <span className="text-[--primary] font-bold">
+                  € {Object.values(mobileSelections).reduce((sum, s) => sum + s.item.price * s.qty, 0).toFixed(2)}
+                </span>
+              </div>
+              <div className="max-h-32 overflow-y-auto mb-3">
+                {Object.values(mobileSelections).length === 0 ? (
+                  <div className="text-gray-400 text-sm">Nessun articolo selezionato</div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {Object.values(mobileSelections).map(s => (
+                      <div key={s.item.id} className="flex justify-between text-sm">
+                        <span className="truncate">{s.item.name}</span>
+                        <span className="font-medium">{s.qty}x</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <Bottone
+                variante="primario"
+                pienaLarghezza
+                className="justify-center"
+                onClick={async () => {
+                  if (!selectedTableId) return;
+                  for (const s of Object.values(mobileSelections)) {
+                    for (let i = 0; i < s.qty; i++) {
+                      await handleAddToOrder(s.item);
+                    }
+                  }
+                  setMobileSelections({});
+                  setMobileModalOpen(false);
+                }}
+              >
+                Invia Comanda
+              </Bottone>
+            </div>
+          </div>
+        </div>
+      )}
+      <MobileStickyBar
+        activeKey="ordini"
+        defaultInactiveClass="bg-[--secondary] text-white"
+        defaultActiveClass="bg-[--primary] text-white"
+        items={[
+          { key: 'ordini', to: '/gestione-ordini', label: 'Ordini', icon: <ClipboardList className="w-6 h-6" /> },
+          { key: 'cucina', to: '/gestione-cucina', label: 'Cucina', icon: <Utensils className="w-6 h-6" /> },
+          { key: 'bar', to: '/gestione-bar', label: 'Bar', icon: <Wine className="w-6 h-6" /> },
+        ]}
+      />
     </div>
   );
 }

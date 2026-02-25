@@ -8,7 +8,8 @@ import Sidebar from './Sidebar';
 import Griglia from './Griglia';
 import ElementoCanvas from './ElementoCanvas';
 import Navbar from '../../componenti/Navbar';
-import { ArrowLeft, Menu, RotateCw, Trash2, Save, PenTool } from 'lucide-react';
+import MobileStickyBar from '../../componenti/MobileStickyBar';
+import { Menu, RotateCw, Trash2, Save, PenTool, Plus, Minus, LayoutGrid, ChefHat } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Bottone from '../../componenti/Bottone';
 
@@ -22,29 +23,74 @@ export default function DisegnaRistorante() {
   const [scale, setScale] = useState(1);
   const [contentOffset, setContentOffset] = useState({ x: 0, y: 0 });
   const [isLayoutReady, setIsLayoutReady] = useState(false);
+  const [hasInitialLayout, setHasInitialLayout] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [isSaving, setIsSaving] = useState(false);
   
-  // Calculate scale based on screen width on initial load
-  // If width < 800px (Mobile), use 2 cells per meter (40px)
-  // Otherwise use 4 cells per meter (80px)
-  const [cellsPerMeter, setCellsPerMeter] = useState(() => {
-    if (typeof window !== 'undefined') {
-       // Default initial scale
-       const width = window.innerWidth;
-       const availableCells = Math.floor(width / GRID_SIZE);
-       
-       // Heuristic: If we have ~40 cells, 4 cells/m means 10m visible width.
-       // This is a reasonable default.
-       if (availableCells >= 40) return 4;
-       if (availableCells >= 20) return 2;
-       return 1;
-    }
-    return 4;
-  });
+  // 4 cells per meter = 80px per meter (if GRID_SIZE is 20)
+  // This gives 25cm precision (1 cell = 25cm)
+  const [cellsPerMeter, setCellsPerMeter] = useState(4);
   
   const pixelsPerMeter = cellsPerMeter * GRID_SIZE;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
+  const lastCenter = useRef<{ x: number, y: number } | null>(null);
+  const lastDist = useRef<number>(0);
+
+  const getDistance = (p1: { x: number, y: number }, p2: { x: number, y: number }) => {
+    return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+  };
+
+  const getCenter = (p1: { x: number, y: number }, p2: { x: number, y: number }) => {
+    return {
+      x: (p1.x + p2.x) / 2,
+      y: (p1.y + p2.y) / 2,
+    };
+  };
+
+  const handleTouchMove = (e: Konva.KonvaEventObject<TouchEvent>) => {
+    e.evt.preventDefault();
+    const touch1 = e.evt.touches[0];
+    const touch2 = e.evt.touches[1];
+
+    if (touch1 && touch2) {
+      const p1 = { x: touch1.clientX, y: touch1.clientY };
+      const p2 = { x: touch2.clientX, y: touch2.clientY };
+
+      if (!lastCenter.current) {
+        lastCenter.current = getCenter(p1, p2);
+        lastDist.current = getDistance(p1, p2);
+        return;
+      }
+
+      const newDist = getDistance(p1, p2);
+      const newCenter = getCenter(p1, p2);
+
+      const pointTo = {
+        x: (newCenter.x - contentOffset.x) / scale,
+        y: (newCenter.y - contentOffset.y) / scale,
+      };
+
+      const scaleBy = newDist / lastDist.current;
+      const newScale = Math.max(0.2, Math.min(2.0, scale * scaleBy));
+
+      const newOffset = {
+        x: newCenter.x - pointTo.x * newScale,
+        y: newCenter.y - pointTo.y * newScale,
+      };
+
+      setScale(newScale);
+      setContentOffset(newOffset);
+      lastDist.current = newDist;
+      lastCenter.current = newCenter;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    lastCenter.current = null;
+    lastDist.current = 0;
+  };
 
   // Aggiorna dimensioni stage e scala solo se necessario per far entrare il contenuto (Mobile fix)
   useEffect(() => {
@@ -52,18 +98,16 @@ export default function DisegnaRistorante() {
 
     const handleResize = () => {
       if (containerRef.current) {
-        // Use full width of container
         const width = containerRef.current.offsetWidth;
         const height = containerRef.current.offsetHeight;
         
-        // Wrap state updates in a single frame to prevent flickering
         if (animationFrameId) cancelAnimationFrame(animationFrameId);
         
         animationFrameId = requestAnimationFrame(() => {
             setStageSize({ width, height });
             
-            // Calcola bounding box del contenuto
-            if (elementi.length > 0) {
+            // Auto-fit only on initial load or when window is resized IF we don't have a layout yet
+            if (elementi.length > 0 && !hasInitialLayout) {
                 let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
                 
                 elementi.forEach(el => {
@@ -73,50 +117,46 @@ export default function DisegnaRistorante() {
                     maxY = Math.max(maxY, el.y + (el.height || 0));
                 });
                 
-                // Convert everything to pixels for layout calculation
-                const minX_px = minX * pixelsPerMeter;
-                const minY_px = minY * pixelsPerMeter;
-                const maxX_px = maxX * pixelsPerMeter;
-                const maxY_px = maxY * pixelsPerMeter;
+                // Content dimensions in pixels (logical, pre-scale)
+                // Add 1 meter padding (pixelsPerMeter) to each side for better visibility
+                const paddingMeters = 1.0;
+                const minX_px = (minX - paddingMeters) * pixelsPerMeter;
+                const minY_px = (minY - paddingMeters) * pixelsPerMeter;
+                const maxX_px = (maxX + paddingMeters) * pixelsPerMeter;
+                const maxY_px = (maxY + paddingMeters) * pixelsPerMeter;
     
+                const contentWidth = maxX_px - minX_px;
                 const contentHeight = maxY_px - minY_px;
-                const contentBottom = maxY_px + 20;
                 
-                const PADDING = 20;
-                const contentRight = maxX_px + PADDING;
+                // Scale factor to fit content within stage with margins
+                const scaleX = width / contentWidth;
+                const scaleY = height / contentHeight;
                 
-                // Calcola scale per far entrare tutto (basato su origine 0,0)
-                const scaleX = width / contentRight;
-                const scaleY = height / contentBottom;
-                
-                // Prendi il minore per assicurarti che entri sia in larghezza che altezza
                 let newScale = Math.min(scaleX, scaleY);
                 
-                // IMPORTANTE: Non zoomare mai in avanti (ingrandire), solo indietro (rimpicciolire) se serve.
-                // Se c'è spazio, lascia scale a 1.
-                if (newScale > 1) newScale = 1;
-                
-                // Evita scale troppo piccoli (es. 0)
-                if (newScale < 0.1) newScale = 0.1;
+                // Limit maximum scale to 1.5 to avoid over-zooming small rooms
+                if (newScale > 1.5) newScale = 1.5;
+                if (newScale < 0.2) newScale = 0.2;
     
                 setScale(newScale);
     
-                // Align left (with small padding) instead of centering horizontally
-                // But keep vertical centering
-                const PADDING_LEFT = 20; // Distance from sidebar
-                const alignedX = PADDING_LEFT - minX_px * newScale;
+                // Center content
+                const centeredX = (width - contentWidth * newScale) / 2 - minX_px * newScale;
                 const centeredY = (height - contentHeight * newScale) / 2 - minY_px * newScale;
                 
                 setContentOffset({ 
-                    x: alignedX, 
+                    x: centeredX, 
                     y: centeredY 
                 });
                 
                 setIsLayoutReady(true);
-            } else {
-                // Default
+                setHasInitialLayout(true);
+            } else if (elementi.length === 0) {
                 setScale(1);
                 setContentOffset({ x: 0, y: 0 });
+                setIsLayoutReady(true);
+            } else {
+                // Keep current scale and offset, just update stage ready state
                 setIsLayoutReady(true);
             }
         });
@@ -198,6 +238,9 @@ export default function DisegnaRistorante() {
         return;
     }
 
+    setIsSaving(true);
+    setSaveStatus('idle');
+
     const layoutData = {
       elementi,
       roomDimensions,
@@ -217,42 +260,67 @@ export default function DisegnaRistorante() {
 
         if (error) {
             console.error('Error saving layout:', error);
-            alert('Errore nel salvataggio del layout.');
+            setSaveStatus('error');
         } else {
-            alert('Layout salvato su Supabase!');
+            setSaveStatus('success');
         }
     } catch (e) {
         console.error('Exception saving layout:', e);
-        alert('Errore imprevisto nel salvataggio.');
+        setSaveStatus('error');
+    } finally {
+        setIsSaving(false);
     }
   };
 
-  const aggiungiElemento = (type: 'rect' | 'wall' | 'door', customProps?: { width?: number, height?: number, label?: string }) => {
+  const aggiungiElemento = (type: 'rect' | 'wall' | 'door' | 'bancone', customProps?: { width?: number, height?: number, label?: string }) => {
     const isWall = type === 'wall';
-    // Snap initial position to grid (in meters)
-    // Assume start at 1.25m (approx 100px / 80px)
-    const startX = 2.0; 
-    const startY = 2.0;
+    
+    // Position it in the center of the current view
+    const viewCenterX = (-contentOffset.x + stageSize.width / 2) / (scale * pixelsPerMeter);
+    const viewCenterY = (-contentOffset.y + stageSize.height / 2) / (scale * pixelsPerMeter);
+    
+    // Snap to grid
+    const SNAP = GRID_SIZE / pixelsPerMeter;
+    const startX = Math.round(viewCenterX / SNAP) * SNAP;
+    const startY = Math.round(viewCenterY / SNAP) * SNAP;
     
     // Default sizes in meters
     let width, height;
     
+    const WALL_THICKNESS = 0.25;
+
     if (customProps?.width && customProps?.height) {
         width = customProps.width; // Already in meters
         height = customProps.height;
     } else {
         // Table: 1x1 meter
         // Wall: length 1 meter, thickness 0.25m (1 cell)
-        // Door: 1 meter x thickness
-        const WALL_THICKNESS = 0.25;
-        
+        // Door: 1 meter x thickness (0.25m)
         if (type === 'door') {
            width = 1.0; // 1 meter wide
            height = WALL_THICKNESS; 
+        } else if (type === 'bancone') {
+           width = 2.0;
+           height = 1.0;
         } else {
-           width = isWall ? 1.0 : 1.0;
+           width = 1.0;
            height = isWall ? WALL_THICKNESS : 1.0;
         }
+    }
+
+    let label = customProps?.label;
+    if (!label) {
+       if (type === 'rect') {
+         const tableNumbers = elementi
+           .filter(e => e.type === 'rect' && e.label?.startsWith('Tavolo '))
+           .map(e => parseInt(e.label!.split(' ')[1]) || 0);
+         const nextNum = tableNumbers.length > 0 ? Math.max(...tableNumbers) + 1 : 1;
+         label = `Tavolo ${nextNum}`;
+       } else if (type === 'bancone') {
+        label = 'Bancone';
+      } else if (type === 'door') {
+        label = 'Porta';
+      }
     }
 
     const newElement: Elemento = {
@@ -262,11 +330,13 @@ export default function DisegnaRistorante() {
       type,
       width,
       height,
-      label: customProps?.label || (isWall ? undefined : (type === 'door' ? 'Porta' : `T${elementi.filter(e => e.type === 'rect').length + 1}`)),
+      label,
       rotation: 0,
       normalized: true
     };
+
     setElementi([...elementi, newElement]);
+    setSelectedId(newElement.id);
   };
 
   const creaStanza = () => {
@@ -289,8 +359,7 @@ export default function DisegnaRistorante() {
     // Clamp to a reasonable maximum (standard view) so small rooms don't explode
     newPixelsPerMeter = Math.min(newPixelsPerMeter, 4 * GRID_SIZE);
 
-    // Update state for future elements
-    setCellsPerMeter(newPixelsPerMeter / GRID_SIZE);
+    // Keep fixed metric: 1 cell = 1 meter
 
     // 5. Create Room Elements (in METERS)
     const WALL_THICKNESS = 0.25; // 25cm
@@ -302,11 +371,11 @@ export default function DisegnaRistorante() {
     // Room is a single object (Rect with stroke)
     const roomElement: Elemento = {
         id: `room-${Date.now()}`,
-        x: startX - WALL_THICKNESS/2,
-        y: startY - WALL_THICKNESS/2,
+        x: startX,
+        y: startY,
         type: 'room',
-        width: roomDimensions.width + WALL_THICKNESS,
-        height: roomDimensions.height + WALL_THICKNESS,
+        width: roomDimensions.width,
+        height: roomDimensions.height,
         rotation: 0,
         normalized: true
     };
@@ -327,9 +396,43 @@ export default function DisegnaRistorante() {
     if (selectedId) {
       setElementi(prev => prev.map(el => {
         if (el.id === selectedId) {
-          // Rotate 90 degrees
-          const newRotation = (el.rotation || 0) + 90;
-          return { ...el, rotation: newRotation };
+          const oldRotation = el.rotation || 0;
+          const newRotation = (oldRotation + 90) % 360;
+          
+          const w = el.width || 0;
+          const h = el.height || 0;
+          
+          // Centro attuale
+          const centerX = el.x + w / 2;
+          const centerY = el.y + h / 2;
+          
+          // Dimensioni visuali dopo la rotazione
+          const isVertical = newRotation % 180 !== 0;
+          const visW = isVertical ? h : w;
+          const visH = isVertical ? w : h;
+          
+          // Snap del nuovo angolo in alto a sinistra visuale
+          const SNAP = GRID_SIZE / pixelsPerMeter;
+          let visX = centerX - visW / 2;
+          let visY = centerY - visH / 2;
+          
+          visX = Math.round(visX / SNAP) * SNAP;
+          visY = Math.round(visY / SNAP) * SNAP;
+          
+          // Nuovo centro dopo lo snap
+          const newCenterX = visX + visW / 2;
+          const newCenterY = visY + visH / 2;
+          
+          // Nuova posizione logica x,y (top-left originale)
+          const nextX = newCenterX - w / 2;
+          const nextY = newCenterY - h / 2;
+
+          return { 
+            ...el, 
+            x: nextX, 
+            y: nextY, 
+            rotation: newRotation 
+          };
         }
         return el;
       }));
@@ -337,119 +440,80 @@ export default function DisegnaRistorante() {
   };
 
   const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>, id: string) => {
-    // 1. Get current position in pixels (relative to Group)
-    const px = e.target.x();
-    const py = e.target.y();
-    
-    // 2. Convert to meters
-    const mx = px / pixelsPerMeter;
-    const my = py / pixelsPerMeter;
-
-    // 3. Define snap unit in meters
-    // GRID_SIZE is 20px. pixelsPerMeter is e.g. 80px. SNAP = 0.25m.
+    // Snap to grid (0.25m = 1 cell)
     const SNAP = GRID_SIZE / pixelsPerMeter;
 
-    const draggedEl = elementi.find(el => el.id === id);
+    const el = elementi.find(item => item.id === id);
+    if (!el) return;
+
+    const w = el.width || 0;
+    const h = el.height || 0;
+    const rotation = el.rotation || 0;
+
+    // e.target is the group. x() and y() are the center because of offset
+    const currentCenterX = e.target.x() / pixelsPerMeter;
+    const currentCenterY = e.target.y() / pixelsPerMeter;
+
+    // Visual dimensions based on rotation
+    const isVertical = rotation % 180 !== 0;
+    const visW = isVertical ? h : w;
+    const visH = isVertical ? w : h;
+
+    // Snap the visual top-left corner
+    const visTopLeftX = currentCenterX - visW / 2;
+    const visTopLeftY = currentCenterY - visH / 2;
     
-    // DOOR SNAPPING LOGIC
-    if (draggedEl?.type === 'door') {
-        const room = elementi.find(el => el.type === 'room');
-        if (room) {
-            // Room coordinates are in meters
-            const rx = room.x;
-            const ry = room.y;
-            const rw = room.width || 0;
-            const rh = room.height || 0;
-            
-            const walls = [
-                { name: 'top', y: ry, x1: rx, x2: rx + rw, vertical: false },
-                { name: 'bottom', y: ry + rh, x1: rx, x2: rx + rw, vertical: false },
-                { name: 'left', x: rx, y1: ry, y2: ry + rh, vertical: true },
-                { name: 'right', x: rx + rw, y1: ry, y2: ry + rh, vertical: true }
-            ];
+    const snappedVisX = Math.round(visTopLeftX / SNAP) * SNAP;
+    const snappedVisY = Math.round(visTopLeftY / SNAP) * SNAP;
 
-            let minDist = Infinity;
-            let closestWall = null;
-            let snapX = mx;
-            let snapY = my;
-            let snapRotation = 0;
+    // New center after snapping
+    const newCenterX = snappedVisX + visW / 2;
+    const newCenterY = snappedVisY + visH / 2;
 
-            walls.forEach(wall => {
-                let dist, px, py;
-                if (wall.vertical) {
-                    const doorLength = draggedEl.width || 0;
-                    const validY1 = wall.y1!;
-                    const validY2 = wall.y2! - doorLength;
-                    
-                    py = Math.max(wall.y1!, Math.min(my, wall.y2!));
-                    px = wall.x!;
-                    dist = Math.sqrt(Math.pow(mx - px, 2) + Math.pow(my - py, 2));
-                    
-                    if (dist < minDist) {
-                        minDist = dist;
-                        closestWall = wall;
-                        snapX = px; 
-                        snapY = Math.max(validY1, Math.min(my, validY2));
-                        snapRotation = 90;
-                    }
-                } else {
-                    const doorLength = draggedEl.width || 0;
-                    const validX1 = wall.x1!;
-                    const validX2 = wall.x2! - doorLength;
+    // Logical top-left (original coordinates)
+    const snappedX = newCenterX - w / 2;
+    const snappedY = newCenterY - h / 2;
 
-                    px = Math.max(wall.x1!, Math.min(mx, wall.x2!));
-                    py = wall.y!;
-                    dist = Math.sqrt(Math.pow(mx - px, 2) + Math.pow(my - py, 2));
-
-                    if (dist < minDist) {
-                        minDist = dist;
-                        closestWall = wall;
-                        snapX = Math.max(validX1, Math.min(mx, validX2));
-                        snapY = py; 
-                        snapRotation = 0;
-                    }
-                }
-            });
-
-            if (closestWall) {
-                // Apply offsets to align thickness
-                // SNAP is used as wall thickness here (0.25m)
-                if (snapRotation === 90) {
-                     snapX += SNAP/2;
-                } else {
-                     snapY -= SNAP/2;
-                }
-            }
-            
-            // Update Konva node (back to pixels)
-            e.target.x(snapX * pixelsPerMeter);
-            e.target.y(snapY * pixelsPerMeter);
-            e.target.rotation(snapRotation);
-
-            setElementi(prev => prev.map(el => {
-              if (el.id === id) {
-                return { ...el, x: snapX, y: snapY, rotation: snapRotation };
-              }
-              return el;
-            }));
-            return;
-        }
-    }
-
-    // Standard Snap
-    const x = Math.round(mx / SNAP) * SNAP;
-    const y = Math.round(my / SNAP) * SNAP;
-
-    e.target.x(x * pixelsPerMeter);
-    e.target.y(y * pixelsPerMeter);
+    // Update Konva node position (center)
+    e.target.x((snappedX + w / 2) * pixelsPerMeter);
+    e.target.y((snappedY + h / 2) * pixelsPerMeter);
     
-    setElementi(prev => prev.map(el => {
-      if (el.id === id) {
-        return { ...el, x, y };
+    setElementi(prev => prev.map(item => {
+      if (item.id === id) {
+        return { ...item, x: snappedX, y: snappedY };
       }
-      return el;
+      return item;
     }));
   };
+
+  const zoomTo = (newScale: number) => {
+    if (newScale > 2) newScale = 2;
+    if (newScale < 0.1) newScale = 0.1;
+    setScale(newScale);
+    if (elementi.length > 0 && containerRef.current) {
+      const width = containerRef.current.offsetWidth;
+      const height = containerRef.current.offsetHeight;
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      elementi.forEach(el => {
+        minX = Math.min(minX, el.x);
+        minY = Math.min(minY, el.y);
+        maxX = Math.max(maxX, el.x + (el.width || 0));
+        maxY = Math.max(maxY, el.y + (el.height || 0));
+      });
+      const minX_px = minX * pixelsPerMeter;
+      const minY_px = minY * pixelsPerMeter;
+      const maxX_px = maxX * pixelsPerMeter;
+      const maxY_px = maxY * pixelsPerMeter;
+      const contentWidth = maxX_px - minX_px;
+      const contentHeight = maxY_px - minY_px;
+      const centeredX = (width - contentWidth * newScale) / 2 - minX_px * newScale;
+      const centeredY = (height - contentHeight * newScale) / 2 - minY_px * newScale;
+      setContentOffset({ x: centeredX, y: centeredY });
+    }
+  };
+
+  const zoomIn = () => zoomTo(scale + 0.1);
+  const zoomOut = () => zoomTo(scale - 0.1);
 
   const handleTransformEnd = (e: Konva.KonvaEventObject<Event>, id: string) => {
     const node = e.target;
@@ -470,15 +534,34 @@ export default function DisegnaRistorante() {
     let newHeight = originalHeight * scaleY;
     
     // Snap to grid (0.25m)
-    // GRID_SIZE is 20px. pixelsPerMeter is e.g. 80px. SNAP = 0.25m.
     const SNAP = GRID_SIZE / pixelsPerMeter;
     
     newWidth = Math.max(SNAP, Math.round(newWidth / SNAP) * SNAP);
     newHeight = Math.max(SNAP, Math.round(newHeight / SNAP) * SNAP);
 
-    // Update coordinates (in meters)
-    const newX = node.x() / pixelsPerMeter;
-    const newY = node.y() / pixelsPerMeter;
+    // node.x() and node.y() are the center because of offset
+    const centerX = node.x() / pixelsPerMeter;
+    const centerY = node.y() / pixelsPerMeter;
+    
+    // Visual dimensions based on rotation
+    const isVertical = rotation % 180 !== 0;
+    const visW = isVertical ? newHeight : newWidth;
+    const visH = isVertical ? newWidth : newHeight;
+
+    // Snap the visual top-left corner
+    const visTopLeftX = centerX - visW / 2;
+    const visTopLeftY = centerY - visH / 2;
+    
+    const snappedVisX = Math.round(visTopLeftX / SNAP) * SNAP;
+    const snappedVisY = Math.round(visTopLeftY / SNAP) * SNAP;
+
+    // New center after snapping
+    const newCenterX = snappedVisX + visW / 2;
+    const newCenterY = snappedVisY + visH / 2;
+
+    // Logical top-left (original coordinates)
+    const newX = newCenterX - newWidth / 2;
+    const newY = newCenterY - newHeight / 2;
     
     setElementi(prev => prev.map(el => {
       if (el.id === id) {
@@ -509,38 +592,7 @@ export default function DisegnaRistorante() {
              >
                <Menu className="w-6 h-6" />
              </button>
-             <Link to="/impostazioni" className="text-gray-500 hover:text-[--secondary] p-1">
-                <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
-             </Link>
            </div>
-        }
-        pageActions={
-           <div className="flex items-center gap-2 sm:gap-3">
-             <Bottone 
-              variante="secondario"
-              onClick={ruotaSelezionato}
-              disabled={!selectedId}
-              className="p-2"
-              title="Ruota selezionato"
-            >
-              <RotateCw className="w-5 h-5" />
-            </Bottone>
-
-            <Bottone 
-              variante="pericolo"
-              onClick={rimuoviSelezionato}
-              disabled={!selectedId}
-              className="p-2"
-              title="Elimina selezionato"
-            >
-              <Trash2 className="w-5 h-5" />
-            </Bottone>
-            
-            <Bottone onClick={salvaLayout} className="flex items-center gap-2 shadow-md">
-              <Save className="w-4 h-4" />
-              <span className="hidden sm:inline">Salva</span>
-            </Bottone>
-          </div>
         }
       />
 
@@ -559,8 +611,12 @@ export default function DisegnaRistorante() {
               creaStanza();
               setShowSidebar(false);
             }}
-            onAddObject={(name, w, h) => {
-              aggiungiElemento('rect', { width: w, height: h, label: name });
+            onAddTable={(w, h) => {
+              aggiungiElemento('rect', { width: w, height: h });
+              setShowSidebar(false);
+            }}
+            onAddBancone={(w, h) => {
+              aggiungiElemento('bancone', { width: w, height: h });
               setShowSidebar(false);
             }}
             onAddDoor={() => {
@@ -578,7 +634,8 @@ export default function DisegnaRistorante() {
             roomDimensions={roomDimensions}
             setRoomDimensions={setRoomDimensions}
             creaStanza={creaStanza}
-            onAddObject={(name, w, h) => aggiungiElemento('rect', { width: w, height: h, label: name })}
+            onAddTable={(w, h) => aggiungiElemento('rect', { width: w, height: h })}
+            onAddBancone={(w, h) => aggiungiElemento('bancone', { width: w, height: h })}
             onAddDoor={() => aggiungiElemento('door')}
           />
 
@@ -591,36 +648,60 @@ export default function DisegnaRistorante() {
             <Stage 
               width={stageSize.width} 
               height={stageSize.height}
-              style={{ opacity: isLayoutReady ? 1 : 0, transition: 'opacity 0.3s ease-in' }}
+              style={{ 
+                opacity: isLayoutReady ? 1 : 0, 
+                transition: 'opacity 0.3s ease-in',
+                cursor: selectedId ? 'default' : 'grab'
+              }}
               onMouseDown={(e) => {
-                // Deselect if clicked on stage (but not on an element)
-                // e.target refers to the shape that was clicked
-                // If it's the Stage or the background Rect, deselect
-                if (e.target === e.target.getStage()) {
+                const clickedOnEmpty = e.target === e.target.getStage();
+                if (clickedOnEmpty) {
                   setSelectedId(null);
                 }
               }}
+              onTouchStart={(e) => {
+                 const clickedOnEmpty = e.target === e.target.getStage();
+                 if (clickedOnEmpty) {
+                   setSelectedId(null);
+                 }
+               }}
+               onTouchMove={handleTouchMove}
+               onTouchEnd={handleTouchEnd}
             >
               <Layer>
-                <Rect 
-                  width={stageSize.width} 
-                  height={stageSize.height} 
-                  fill="#ffffff" 
-                  listening={true}
-                  onMouseDown={() => setSelectedId(null)}
-                />
-                
-                <Group x={contentOffset.x} y={contentOffset.y} scaleX={scale} scaleY={scale}>
-                    <Griglia 
-                        stageSize={stageSize} 
-                        visibleRect={{
-                            x: -contentOffset.x / scale,
-                            y: -contentOffset.y / scale,
-                            width: stageSize.width / scale,
-                            height: stageSize.height / scale
-                        }}
-                        gridSize={pixelsPerMeter * 0.25}
-                    />
+                <Group 
+                  x={contentOffset.x} 
+                  y={contentOffset.y} 
+                  scaleX={scale} 
+                  scaleY={scale}
+                  draggable={true}
+                  onDragEnd={(e) => {
+                    if (e.target === e.currentTarget) {
+                      setContentOffset({ x: e.target.x(), y: e.target.y() });
+                    }
+                  }}
+                >
+                  {/* Background area inside Group to capture panning anywhere */}
+                  <Rect 
+                     width={stageSize.width * 20 / scale} 
+                     height={stageSize.height * 20 / scale}
+                     x={-stageSize.width * 10 / scale}
+                     y={-stageSize.height * 10 / scale}
+                     fill="white"
+                     opacity={0}
+                     listening={true}
+                   />
+                  
+                  <Griglia 
+                      stageSize={stageSize} 
+                      visibleRect={{
+                          x: -contentOffset.x / scale,
+                          y: -contentOffset.y / scale,
+                          width: stageSize.width / scale,
+                          height: stageSize.height / scale
+                      }}
+                      gridSize={pixelsPerMeter}
+                  />
 
                     {elementi.map((el) => (
                     <ElementoCanvas
@@ -640,16 +721,6 @@ export default function DisegnaRistorante() {
                     />
                     ))}
 
-                    <Transformer
-                    ref={transformerRef}
-                    boundBoxFunc={(oldBox, newBox) => {
-                        if (newBox.width < 20 || newBox.height < 20) {
-                        return oldBox;
-                        }
-                        return newBox;
-                    }}
-                    />
-                    
                     <SelectedNodeTransformer selectedId={selectedId} />
                 </Group>
               </Layer>
@@ -657,9 +728,110 @@ export default function DisegnaRistorante() {
             </div>
           </div>
           
-          {/* Mobile Drawer / Bottom Sheet equivalent could go here if needed, 
-              but for now standard controls are in Strumenti or we can make Sidebar collapsible */}
+          {/* FAB icons (desktop + mobile) */}
+          <div className="fixed bottom-24 right-6 z-40 flex flex-row gap-3 md:bottom-6">
+            <button 
+              onClick={zoomOut}
+              className="w-12 h-12 rounded-full shadow-lg bg-white border border-gray-200 flex items-center justify-center text-gray-700"
+              title="Zoom -"
+            >
+              <Minus className="w-6 h-6" />
+            </button>
+            <button 
+              onClick={zoomIn}
+              className="w-12 h-12 rounded-full shadow-lg bg-white border border-gray-200 flex items-center justify-center text-gray-700"
+              title="Zoom +"
+            >
+              <Plus className="w-6 h-6" />
+            </button>
+            <button 
+              onClick={ruotaSelezionato}
+              disabled={!selectedId}
+              className="w-12 h-12 rounded-full shadow-lg bg-white border border-gray-200 flex items-center justify-center text-gray-700 disabled:opacity-50"
+              title="Ruota"
+            >
+              <RotateCw className="w-6 h-6" />
+            </button>
+            <button 
+              onClick={rimuoviSelezionato}
+              disabled={!selectedId}
+              className="w-12 h-12 rounded-full shadow-lg bg-white border border-gray-200 flex items-center justify-center text-red-600 disabled:opacity-50"
+              title="Elimina"
+            >
+              <Trash2 className="w-6 h-6" />
+            </button>
+            <button 
+              onClick={salvaLayout}
+              disabled={isSaving}
+              className="w-12 h-12 rounded-full shadow-lg bg-[--primary] text-white flex items-center justify-center disabled:opacity-50"
+              title="Salva"
+            >
+              {isSaving ? <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Save className="w-6 h-6" />}
+            </button>
+          </div>
       </div>
+
+      {/* Modale Feedback Salvataggio */}
+      {saveStatus !== 'idle' && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-8 text-center">
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                saveStatus === 'success' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+              }`}>
+                {saveStatus === 'success' ? (
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                )}
+              </div>
+              
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                {saveStatus === 'success' ? 'Salvato con successo!' : 'Errore nel salvataggio'}
+              </h3>
+              <p className="text-gray-500 mb-8">
+                {saveStatus === 'success' 
+                  ? 'La tua piantina è stata aggiornata correttamente.' 
+                  : 'Si è verificato un problema. Prova a ricaricare la pagina.'}
+              </p>
+
+              <div className="flex flex-col gap-3">
+                {saveStatus === 'error' ? (
+                  <Bottone 
+                    variante="primario" 
+                    className="w-full justify-center py-3"
+                    onClick={() => window.location.reload()}
+                  >
+                    Ricarica e riprova
+                  </Bottone>
+                ) : (
+                  <Bottone 
+                    variante="primario" 
+                    className="w-full justify-center py-3"
+                    onClick={() => setSaveStatus('idle')}
+                  >
+                    Ottimo!
+                  </Bottone>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <MobileStickyBar
+        activeKey="disegna"
+        defaultInactiveClass="bg-[--secondary] text-white"
+        defaultActiveClass="bg-[--primary] text-white"
+        items={[
+          { key: 'menu', to: '/gestione-menu', label: 'Menu', icon: <ChefHat className="w-6 h-6" /> },
+          { key: 'disegna', to: '/disegna', label: 'Disegna', icon: <PenTool className="w-6 h-6" /> },
+        ]}
+      />
     </div>
   );
 }
@@ -682,5 +854,15 @@ const SelectedNodeTransformer = ({ selectedId }: { selectedId: string | null }) 
     }
   }, [selectedId, stage]);
 
-  return <Transformer ref={trRef} />;
+  return (
+    <Transformer
+      ref={trRef}
+      rotateEnabled={false}
+      resizeEnabled={false}
+      enabledAnchors={[]}
+      borderStroke="transparent"
+      anchorStroke="transparent"
+      anchorFill="transparent"
+    />
+  );
 };

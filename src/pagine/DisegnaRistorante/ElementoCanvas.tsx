@@ -21,13 +21,18 @@ export default function ElementoCanvas({
   readOnly = false,
   fillColor,
 }: ElementoCanvasProps) {
+  const w = elemento.width || 0;
+  const h = elemento.height || 0;
+
   return (
     <Group
       id={elemento.id}
-      x={elemento.x}
-      y={elemento.y}
-      width={elemento.width}
-      height={elemento.height}
+      x={elemento.x + w / 2}
+      y={elemento.y + h / 2}
+      offsetX={w / 2}
+      offsetY={h / 2}
+      width={w}
+      height={h}
       rotation={elemento.rotation || 0}
       draggable={!readOnly}
       onDragEnd={(e) => !readOnly && onDragEnd(e, elemento.id)}
@@ -37,8 +42,8 @@ export default function ElementoCanvas({
     >
       {elemento.type === 'wall' && (
         <Rect
-          width={elemento.width}
-          height={elemento.height}
+          width={w}
+          height={h}
           fill="#2c3e50"
           stroke={isSelected ? '#FF6B35' : undefined}
           strokeWidth={isSelected ? 2 : 0}
@@ -48,8 +53,10 @@ export default function ElementoCanvas({
 
       {elemento.type === 'room' && (
         <Rect
-          width={elemento.width}
-          height={elemento.height}
+          x={-GRID_SIZE / 2}
+          y={-GRID_SIZE / 2}
+          width={w + GRID_SIZE}
+          height={h + GRID_SIZE}
           stroke="#2c3e50"
           strokeWidth={GRID_SIZE}
           fill="transparent"
@@ -61,39 +68,41 @@ export default function ElementoCanvas({
         <Group>
             {/* White background to hide the wall behind */}
             <Rect
-                width={elemento.width}
-                height={elemento.height}
+                width={w}
+                height={h}
                 fill="#ffffff"
             />
             {/* Door visual: simple arc or lines */}
             <Rect
-                width={elemento.width}
-                height={elemento.height}
-                stroke="#FF6B35"
-                strokeWidth={2}
+                width={w}
+                height={h}
+                stroke={isSelected ? '#FF6B35' : '#4B5563'}
+                strokeWidth={isSelected ? 3 : 2}
                 cornerRadius={2}
             />
             {/* Door swing arc visualization could go here */}
             <Text
-                text="DOOR"
+                text="PORTA"
                 fontSize={10}
-                width={elemento.width}
-                height={elemento.height}
+                width={w}
+                height={h}
+                fill={isSelected ? '#FF6B35' : '#4B5563'}
+                fontStyle="bold"
                 align="center"
                 verticalAlign="middle"
             />
         </Group>
       )}
 
-      {elemento.type === 'rect' && (
+      {(elemento.type === 'rect' || elemento.type === 'bancone') && (
         <>
           <Rect
-            width={elemento.width}
-            height={elemento.height}
-            fill={fillColor || (isSelected ? '#FFE8D6' : '#fff')}
+            width={w}
+            height={h}
+            fill={fillColor || (elemento.type === 'bancone' ? '#e5e7eb' : (isSelected ? '#FFE8D6' : '#fff'))}
             stroke={isSelected ? '#FF6B35' : '#4B5563'}
             strokeWidth={isSelected ? 2 : 1}
-            cornerRadius={4}
+            cornerRadius={elemento.type === 'bancone' ? 2 : 4}
             shadowColor="black"
             shadowBlur={5}
             shadowOpacity={0.1}
@@ -104,8 +113,8 @@ export default function ElementoCanvas({
             fontSize={14}
             fontStyle="bold"
             fill="#4B5563"
-            width={elemento.width}
-            height={elemento.height}
+            width={w}
+            height={h}
             align="center"
             verticalAlign="middle"
             listening={false}
@@ -119,7 +128,7 @@ export default function ElementoCanvas({
           fontSize={elemento.fontSize || 16}
           fontStyle="bold"
           fill="#4B5563"
-          width={elemento.width}
+          width={w}
           align="center"
         />
       )}

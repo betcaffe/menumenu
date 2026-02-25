@@ -8,7 +8,7 @@ interface SidebarProps {
 
 export function Sidebar({ children, className = '' }: SidebarProps) {
   return (
-    <div className={`bg-white border-r border-gray-200 flex flex-col h-full overflow-hidden ${className}`}>
+    <div className={`bg-white border-r border-gray-200 flex flex-col h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 pb-24 md:pb-0 ${className}`}>
       {children}
     </div>
   );
