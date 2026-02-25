@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChefHat, PenTool, LayoutGrid } from 'lucide-react';
+import { ChefHat, PenTool } from 'lucide-react';
 import Navbar from '../componenti/Navbar';
 import DashboardCard from '../componenti/DashboardCard';
 import MobileStickyBar from '../componenti/MobileStickyBar';

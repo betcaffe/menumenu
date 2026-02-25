@@ -5,7 +5,6 @@ import Bottone from '../../componenti/Bottone';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../supabaseClient';
 import { OrderItem, MenuCategory } from '../GestioneMenu/types';
-import { Link } from 'react-router-dom';
 import MobileStickyBar from '../../componenti/MobileStickyBar';
 
 interface DisplayOrder {

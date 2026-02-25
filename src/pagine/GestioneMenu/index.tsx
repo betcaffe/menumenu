@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
-import { ChefHat, Plus, Edit2, Trash2, X, Menu as MenuIcon, PenTool, LayoutGrid } from 'lucide-react';
+import { ChefHat, Plus, Edit2, Trash2, X, Menu as MenuIcon, PenTool } from 'lucide-react';
 import Bottone from '../../componenti/Bottone';
 import Navbar from '../../componenti/Navbar';
 import MobileStickyBar from '../../componenti/MobileStickyBar';
 import Input from '../../componenti/Input';
 import Textarea from '../../componenti/Textarea';
 import Select from '../../componenti/Select';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../supabaseClient';
 import { MenuItem, MenuCategory, CATEGORIES } from './types';

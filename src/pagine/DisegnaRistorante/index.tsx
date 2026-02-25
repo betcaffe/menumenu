@@ -9,8 +9,7 @@ import Griglia from './Griglia';
 import ElementoCanvas from './ElementoCanvas';
 import Navbar from '../../componenti/Navbar';
 import MobileStickyBar from '../../componenti/MobileStickyBar';
-import { Menu, RotateCw, Trash2, Save, PenTool, Plus, Minus, LayoutGrid, ChefHat } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Menu, RotateCw, Trash2, Save, PenTool, Plus, Minus, ChefHat } from 'lucide-react';
 import Bottone from '../../componenti/Bottone';
 
 export default function DisegnaRistorante() {
@@ -29,12 +28,11 @@ export default function DisegnaRistorante() {
   
   // 4 cells per meter = 80px per meter (if GRID_SIZE is 20)
   // This gives 25cm precision (1 cell = 25cm)
-  const [cellsPerMeter, setCellsPerMeter] = useState(4);
+  const [cellsPerMeter] = useState(4);
   
   const pixelsPerMeter = cellsPerMeter * GRID_SIZE;
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const transformerRef = useRef<Konva.Transformer>(null);
   const lastCenter = useRef<{ x: number, y: number } | null>(null);
   const lastDist = useRef<number>(0);
 
@@ -287,8 +285,6 @@ export default function DisegnaRistorante() {
     // Default sizes in meters
     let width, height;
     
-    const WALL_THICKNESS = 0.25;
-
     if (customProps?.width && customProps?.height) {
         width = customProps.width; // Already in meters
         height = customProps.height;
@@ -296,6 +292,7 @@ export default function DisegnaRistorante() {
         // Table: 1x1 meter
         // Wall: length 1 meter, thickness 0.25m (1 cell)
         // Door: 1 meter x thickness (0.25m)
+        const WALL_THICKNESS = 0.25;
         if (type === 'door') {
            width = 1.0; // 1 meter wide
            height = WALL_THICKNESS; 
@@ -544,6 +541,7 @@ export default function DisegnaRistorante() {
     const centerY = node.y() / pixelsPerMeter;
     
     // Visual dimensions based on rotation
+    const rotation = node.rotation();
     const isVertical = rotation % 180 !== 0;
     const visW = isVertical ? newHeight : newWidth;
     const visH = isVertical ? newWidth : newHeight;

@@ -6,7 +6,6 @@ import { Elemento } from '../DisegnaRistorante/types';
 import { MenuItem, MenuCategory, CATEGORIES, Order } from '../GestioneMenu/types';
 import Bottone from '../../componenti/Bottone';
 import Navbar from '../../componenti/Navbar';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../supabaseClient';
 
