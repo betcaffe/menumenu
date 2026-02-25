@@ -373,12 +373,12 @@ export default function GestioneMenu() {
                                 setPriceInputValue(val);
                                 setEditingItem({...editingItem, price: parseFloat(val) || 0});
                             }}
-                            onFocus={e => {
+                            onFocus={() => {
                                 if (priceInputValue === '0') {
                                     setPriceInputValue('');
                                 }
                             }}
-                            onBlur={e => {
+                            onBlur={() => {
                                 if (priceInputValue === '') {
                                     setPriceInputValue('0');
                                 }

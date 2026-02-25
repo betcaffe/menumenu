@@ -184,7 +184,7 @@ export default function GestioneBar() {
 
             setOrders(displayOrders);
             if (displayOrders.length > 0 && !selectedOrderId) {
-                setSelectedOrderId(displayOrders[0].orderId);
+                setSelectedOrderId(displayOrders[0]?.orderId);
             }
         }
     };
