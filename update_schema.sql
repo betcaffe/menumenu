@@ -26,3 +26,42 @@ begin
   return v_new_id;
 end;
 $$ language plpgsql security invoker;
+
+-- 4. Tabelle per bozze di portate (order_drafts)
+create table if not exists order_drafts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  restaurant_id uuid not null,
+  table_id text not null,
+  course_number smallint not null check (course_number in (1,2,3)),
+  items jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table order_drafts enable row level security;
+
+drop policy if exists "Users can view their own order drafts" on order_drafts;
+create policy "Users can view their own order drafts" on order_drafts for select using (auth.uid() = user_id);
+
+drop policy if exists "Users can insert their own order drafts" on order_drafts;
+create policy "Users can insert their own order drafts" on order_drafts for insert with check (auth.uid() = user_id);
+
+drop policy if exists "Users can update their own order drafts" on order_drafts;
+create policy "Users can update their own order drafts" on order_drafts for update using (auth.uid() = user_id);
+
+drop policy if exists "Users can delete their own order drafts" on order_drafts;
+create policy "Users can delete their own order drafts" on order_drafts for delete using (auth.uid() = user_id);
+
+-- Unique constraint required for upsert on (user_id, restaurant_id, table_id, course_number)
+do $$
+begin
+  if not exists (
+    select 1 
+    from pg_indexes 
+    where schemaname = 'public' 
+      and indexname = 'order_drafts_unique_idx'
+  ) then
+    create unique index order_drafts_unique_idx 
+      on public.order_drafts (user_id, restaurant_id, table_id, course_number);
+  end if;
+end $$;

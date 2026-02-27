@@ -24,6 +24,10 @@ export default function ElementoCanvas({
   const w = elemento.width || 0;
   const h = elemento.height || 0;
 
+  if (elemento.type !== 'text' && (w <= 0 || h <= 0)) {
+    return null;
+  }
+
   return (
     <Group
       id={elemento.id}

@@ -249,17 +249,17 @@ export default function GestioneMenu() {
                                         </span>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2 border-l border-gray-100 pl-4">
+                                <div className="flex items-center gap-2 border-l border-gray-100 pl-4 shrink-0">
                                     <button 
                                         onClick={() => handleEditItem(item)}
-                                        className="p-2 text-gray-400 hover:text-[--secondary] hover:bg-blue-50 rounded-lg transition-colors"
+                                        className="p-2.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors border border-blue-100 shadow-sm"
                                         title="Modifica"
                                     >
                                         <Edit2 className="w-5 h-5" />
                                     </button>
                                     <button 
                                         onClick={() => handleDeleteItem(item.id)}
-                                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        className="p-2.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors border border-red-100 shadow-sm"
                                         title="Elimina"
                                     >
                                         <Trash2 className="w-5 h-5" />
@@ -282,45 +282,59 @@ export default function GestioneMenu() {
       </div>
 
       {isCategoryModalOpen && modalCategory && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm pb-24">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden">
-            <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setIsCategoryModalOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl w-[94%] max-w-3xl overflow-hidden flex flex-col h-[82vh] max-h-[82vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50 shrink-0">
               <h3 className="font-bold text-lg">{modalCategory}</h3>
               <button onClick={() => setIsCategoryModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="w-6 h-6" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 overflow-y-auto flex-1">
               <div className="grid grid-cols-1 gap-3">
                 {menuItems.filter(i => i.category === modalCategory).map(item => (
-                  <div key={item.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-bold text-gray-800 truncate" title={item.name}>{item.name}</h3>
-                      <span className="text-sm font-bold text-[--primary] bg-orange-50 px-2 py-1 rounded-md whitespace-nowrap">
-                        € {item.price.toFixed(2)}
-                      </span>
+                  <div key={item.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-3">
+                    {/* Row 1: Name and Price */}
+                    <div className="flex items-center justify-between gap-4">
+                      <h3 className="font-bold text-lg text-gray-800 break-words flex-1 leading-tight">
+                        {item.name}
+                      </h3>
+                      <div className="flex items-center justify-center h-10 w-[96px] bg-orange-50 text-[--primary] rounded-lg border border-orange-100 shrink-0">
+                        <span className="text-sm font-black whitespace-nowrap">
+                          € {item.price.toFixed(2)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-gray-500 text-sm truncate mr-4" title={item.description || 'Nessuna descrizione'}>
-                        {item.description || 'Nessuna descrizione'}
+
+                    {/* Row 2: Description and Actions */}
+                    <div className="flex items-center justify-between gap-4">
+                      <p className="text-gray-500 text-xs italic flex-1 line-clamp-2">
+                        {item.description || "Nessuna descrizione"}
                       </p>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0 w-[96px] justify-end">
                         <button 
                           onClick={() => {
                             handleEditItem(item);
                             setIsCategoryModalOpen(false);
                           }}
-                          className="px-3 py-1.5 text-[--secondary] hover:bg-blue-50 rounded-md transition-colors text-sm font-medium"
+                          className="h-10 w-11 flex items-center justify-center text-blue-500 hover:bg-blue-50 rounded-lg transition-colors border border-blue-100 shadow-sm"
                           title="Modifica"
                         >
-                          Modifica
+                          <Edit2 className="w-5 h-5" />
                         </button>
+                        
                         <button 
                           onClick={() => handleDeleteItem(item.id)}
-                          className="px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors text-sm font-medium"
+                          className="h-10 w-11 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-red-100 shadow-sm"
                           title="Elimina"
                         >
-                          Elimina
+                          <Trash2 className="w-5 h-5" />
                         </button>
                       </div>
                     </div>
@@ -337,9 +351,15 @@ export default function GestioneMenu() {
 
       {/* Edit/Add Modal */}
       {isModalOpen && editingItem && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm pb-24 md:pb-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
-                <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+        <div 
+          className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setIsModalOpen(false)}
+        >
+            <div 
+              className="bg-white rounded-2xl shadow-2xl w-[94%] max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col h-[82vh] max-h-[82vh]"
+              onClick={(e) => e.stopPropagation()}
+            >
+                <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50 shrink-0">
                     <h3 className="font-bold text-lg">
                         {menuItems.find(i => i.id === editingItem.id) ? 'Modifica Piatto' : 'Nuovo Piatto'}
                     </h3>
@@ -348,7 +368,7 @@ export default function GestioneMenu() {
                     </button>
                 </div>
                 
-                <div className="p-6 space-y-4">
+                <div className="p-6 space-y-4 overflow-y-auto flex-1">
                     <Input 
                         label="Nome Piatto"
                         type="text" 
@@ -399,39 +419,30 @@ export default function GestioneMenu() {
                         label="Descrizione"
                         value={editingItem.description || ''}
                         onChange={e => setEditingItem({...editingItem, description: e.target.value})}
-                        placeholder="Ingredienti e dettagli..."
+                        placeholder="Ingredienti o note..."
                         rows={3}
                     />
-
-                    <div className="flex items-center gap-2 pt-2">
+                    
+                    <div className="flex items-center gap-2">
                         <input 
-                            type="checkbox" 
                             id="available"
+                            type="checkbox" 
                             checked={editingItem.available}
                             onChange={e => setEditingItem({...editingItem, available: e.target.checked})}
-                            className="w-4 h-4 text-[--primary] rounded focus:ring-[--primary]"
+                            className="w-5 h-5 accent-[--primary] rounded border-gray-300"
                         />
-                        <label htmlFor="available" className="text-sm font-medium text-gray-700 select-none cursor-pointer">
-                            Disponibile per l'ordine
-                        </label>
+                        <label htmlFor="available" className="text-sm font-medium text-gray-700">Disponibile nel menu</label>
                     </div>
+                </div>
 
-                    <div className="pt-4 flex gap-3">
-                        <Bottone 
-                            variante="secondario" 
-                            className="flex-1 justify-center"
-                            onClick={() => setIsModalOpen(false)}
-                        >
-                            Annulla
-                        </Bottone>
-                        <Bottone 
-                            variante="primario" 
-                            className="flex-1 justify-center"
-                            onClick={handleSaveItem}
-                        >
-                            Salva
-                        </Bottone>
-                    </div>
+                <div className="p-4 bg-gray-50 border-t shrink-0">
+                    <Bottone 
+                        onClick={handleSaveItem}
+                        variante="primario"
+                        pienaLarghezza
+                    >
+                        Salva Piatto
+                    </Bottone>
                 </div>
             </div>
         </div>

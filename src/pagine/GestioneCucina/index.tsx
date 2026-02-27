@@ -379,13 +379,18 @@ export default function GestioneCucina() {
 
             {/* Mobile Modal Detail */}
             {isMobileDetailOpen && selectedOrder && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center md:hidden pb-24">
-                    <div className="absolute inset-0 bg-black/40" onClick={() => setIsMobileDetailOpen(false)}></div>
-                    <div className="bg-white rounded-2xl w-[92%] max-w-md shadow-2xl overflow-hidden relative flex flex-col max-h-[80vh]">
-                        <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-orange-50">
+                <div 
+                    className="fixed inset-0 z-[100] flex items-center justify-center md:hidden p-4 bg-black/60 backdrop-blur-sm"
+                    onClick={() => setIsMobileDetailOpen(false)}
+                >
+                    <div 
+                        className="bg-white rounded-2xl w-[94%] max-w-md shadow-2xl overflow-hidden relative flex flex-col h-[82vh] max-h-[82vh]"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-orange-50 shrink-0">
                             <div>
-                                <h3 className="font-bold text-xl text-gray-800">
-                                    {tableMap[selectedOrder.tableId] || `Tavolo ${selectedOrder.tableId.replace('el-', '').replace('rect-', '')}`}
+                                <h3 className="font-bold text-lg text-gray-800">
+                                    {tableMap[selectedOrder.tableId] || 'Tavolo'}
                                 </h3>
                                 <p className="text-xs text-gray-500">
                                     {selectedOrder.items.length} articoli
@@ -427,7 +432,7 @@ export default function GestioneCucina() {
                             ))}
                         </div>
 
-                        <div className="p-4 bg-gray-50 border-t">
+                        <div className="p-4 bg-gray-50 border-t shrink-0">
                             <Bottone 
                                 onClick={() => {
                                     handleOrderComplete(selectedOrder.orderId, selectedOrder.items);

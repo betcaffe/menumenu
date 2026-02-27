@@ -6,6 +6,7 @@ import { Elemento } from '../DisegnaRistorante/types';
 import { MenuItem, MenuCategory, CATEGORIES, Order } from '../GestioneMenu/types';
 import Bottone from '../../componenti/Bottone';
 import Navbar from '../../componenti/Navbar';
+import NotificaModal from '../../componenti/NotificaModal';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../supabaseClient';
 
@@ -27,10 +28,68 @@ export default function GestioneOrdini() {
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [mobileModalOpen, setMobileModalOpen] = useState(false);
   const [mobileSearchQuery, setMobileSearchQuery] = useState('');
-  const [mobileSelections, setMobileSelections] = useState<Record<string, { item: MenuItem, qty: number }>>({});
+  const [activeCourse, setActiveCourse] = useState<number>(1);
+  const [mobileCourseSelections, setMobileCourseSelections] = useState<Record<number, Record<string, { item: MenuItem, qty: number }>>>({ 1: {}, 2: {}, 3: {} });
+  const [isOrderSentModalOpen, setIsOrderSentModalOpen] = useState(false);
+  const [isOrderInfoModalOpen, setIsOrderInfoModalOpen] = useState(false);
   
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Persistenza bozze portate in DB
+  const saveCourseDraft = async (course: number, selections: Record<string, { item: MenuItem, qty: number }>) => {
+    try {
+      if (!user || !restaurantId || !selectedTableId) return;
+      const items = Object.values(selections).map(s => ({
+        menu_item_id: s.item.id,
+        name: s.item.name,
+        price: s.item.price,
+        qty: s.qty,
+        category: s.item.category
+      }));
+      await supabase
+        .from('order_drafts')
+        .upsert([{
+          user_id: user.id,
+          restaurant_id: restaurantId,
+          table_id: selectedTableId,
+          course_number: course,
+          items,
+          updated_at: new Date().toISOString()
+        }], { onConflict: 'user_id,restaurant_id,table_id,course_number' });
+    } catch (e) {
+      console.error('saveCourseDraft failed', e);
+    }
+  };
+
+  const loadDraftsForTable = async (tableId: string) => {
+    try {
+      if (!user || !restaurantId) return;
+      const { data, error } = await supabase
+        .from('order_drafts')
+        .select('course_number, items')
+        .eq('user_id', user.id)
+        .eq('restaurant_id', restaurantId)
+        .eq('table_id', tableId);
+      if (error) throw error;
+      const next: Record<number, Record<string, { item: MenuItem, qty: number }>> = { 1: {}, 2: {}, 3: {} };
+      (data || []).forEach((row: any) => {
+        const course = row.course_number as number;
+        const items = Array.isArray(row.items) ? row.items : [];
+        const map: Record<string, { item: MenuItem, qty: number }> = {};
+        items.forEach((it: any) => {
+          map[it.menu_item_id] = { 
+            item: { id: it.menu_item_id, name: it.name, price: it.price, category: it.category, available: true } as MenuItem, 
+            qty: it.qty 
+          };
+        });
+        next[course] = map;
+      });
+      setMobileCourseSelections(next);
+    } catch (e) {
+      console.error('loadDraftsForTable failed', e);
+      setMobileCourseSelections({ 1: {}, 2: {}, 3: {} });
+    }
+  };
   // Load Data from Supabase
   useEffect(() => {
     if (!user) return;
@@ -222,67 +281,74 @@ export default function GestioneOrdini() {
     setIsAddingItem(true);
 
     let orderId: string;
-    let newOrderCreated = false;
 
-    // 1. Check local state for active order
-    const existingOrderIndex = orders.findIndex(o => o.tableId === selectedTableId && o.status === 'active');
+    // 1. Ottimistic update usando lo stato precedente, senza dipendere da 'orders' esterno
     const tempId = `temp-${Date.now()}`;
     
     // Optimistic Update
     setOrders(prev => {
-      let newOrders = [...prev];
-      if (existingOrderIndex >= 0) {
-        // Update existing
-        const order = { ...newOrders[existingOrderIndex] };
-        // Create a copy of items array to avoid mutating state directly
-        order.items = [...order.items, { 
+      const idx = prev.findIndex(o => o.tableId === selectedTableId && o.status === 'active');
+      const next = [...prev];
+      if (idx >= 0) {
+        const order = { ...next[idx] };
+        order.items = [...order.items, {
+          id: tempId,
+          menuItemId: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: 1,
+          created_at: new Date().toISOString()
+        }];
+        next[idx] = order;
+      } else {
+        next.push({
+          tableId: selectedTableId,
+          status: 'active',
+          timestamp: Date.now(),
+          items: [{
             id: tempId,
-            menuItemId: item.id, 
-            name: item.name, 
-            price: item.price, 
+            menuItemId: item.id,
+            name: item.name,
+            price: item.price,
             quantity: 1,
             created_at: new Date().toISOString()
-        }];
-        newOrders[existingOrderIndex] = order;
-      } else {
-        // Create new
-        newOrders.push({
-            tableId: selectedTableId,
-            status: 'active',
-            timestamp: Date.now(),
-            items: [{ 
-                id: tempId,
-                menuItemId: item.id, 
-                name: item.name, 
-                price: item.price, 
-                quantity: 1,
-                created_at: new Date().toISOString()
-            }]
+          }]
         });
       }
-      return newOrders;
+      return next;
     });
 
     // 2. DB Interaction
     try {
-        if (existingOrderIndex >= 0 && orders[existingOrderIndex].id) {
-            orderId = orders[existingOrderIndex].id!;
+        // Verifica su DB: esiste già un ordine attivo per questo tavolo?
+        const { data: existingDbOrders, error: findErr } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('restaurant_id', restaurantId)
+          .eq('table_id', selectedTableId)
+          .eq('status', 'active')
+          .eq('user_id', user.id)
+          .limit(1);
+        if (findErr) throw findErr;
+
+        const existingDbOrderId = Array.isArray(existingDbOrders) && existingDbOrders.length > 0 ? existingDbOrders[0].id : null;
+
+        if (existingDbOrderId) {
+          orderId = existingDbOrderId as string;
         } else {
-            // Create Order in DB
-            const { data: newOrder, error } = await supabase
-                .from('orders')
-                .insert([{ 
-                    user_id: user.id,
-                    restaurant_id: restaurantId, 
-                    table_id: selectedTableId,
-                    status: 'active'
-                }])
-                .select()
-                .single();
-                
-            if (error) throw error;
-            orderId = newOrder.id;
-            newOrderCreated = true;
+          // Crea nuovo ordine in DB
+          const { data: newOrder, error } = await supabase
+            .from('orders')
+            .insert([{
+              user_id: user.id,
+              restaurant_id: restaurantId,
+              table_id: selectedTableId,
+              status: 'active'
+            }])
+            .select()
+            .single();
+          if (error) throw error;
+          orderId = newOrder.id;
         }
 
         // 3. Add/Update Item in DB via RPC (Atomic to prevent race conditions)
@@ -299,20 +365,18 @@ export default function GestioneOrdini() {
         // If we created a new order, update the local state with the ID
         // And update the item ID with the real one from DB
         setOrders(prev => {
-            const newOrders = [...prev];
-            const orderIdx = newOrders.findIndex(o => o.tableId === selectedTableId && o.status === 'active');
-            
+            const next = [...prev];
+            const orderIdx = next.findIndex(o => o.tableId === selectedTableId && o.status === 'active');
             if (orderIdx >= 0) {
-                const order = { ...newOrders[orderIdx] };
-                if (newOrderCreated && !order.id) order.id = orderId;
-                
-                const itemIdx = order.items.findIndex(i => i.id === tempId);
-                if (itemIdx >= 0 && newItemId) {
-                    order.items[itemIdx] = { ...order.items[itemIdx], id: newItemId };
-                }
-                newOrders[orderIdx] = order;
+              const order = { ...next[orderIdx] };
+              if (!order.id) order.id = orderId;
+              const itemIdx = order.items.findIndex(i => i.id === tempId);
+              if (itemIdx >= 0 && newItemId) {
+                order.items[itemIdx] = { ...order.items[itemIdx], id: newItemId };
+              }
+              next[orderIdx] = order;
             }
-            return newOrders;
+            return next;
         });
 
     } catch (e) {
@@ -464,7 +528,8 @@ export default function GestioneOrdini() {
                               if (window.matchMedia('(max-width: 767px)').matches) {
                                 setMobileModalOpen(true);
                                 setMobileSearchQuery('');
-                                setMobileSelections({});
+                                setActiveCourse(1);
+                                loadDraftsForTable(table.id);
                               } else {
                                 setActiveCategory(null);
                               }
@@ -672,142 +737,285 @@ export default function GestioneOrdini() {
         </SidebarContainer>
       </div>
       {mobileModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center md:hidden pb-20">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileModalOpen(false)}></div>
-          <div className="bg-white rounded-2xl w-[92%] max-w-md shadow-2xl p-4 relative">
-            <div className="flex items-center justify-between mb-3">
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center md:hidden p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setMobileModalOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl w-[94%] shadow-2xl overflow-hidden relative flex flex-col h-[82vh] max-h-[82vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50 shrink-0">
               <h3 className="font-bold text-lg">{selectedTableLabel}</h3>
               <button onClick={() => setMobileModalOpen(false)} className="text-gray-500 hover:text-gray-700">
                 <X className="w-6 h-6" />
               </button>
             </div>
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Cerca piatto..."
-                value={mobileSearchQuery}
-                onChange={(e) => setMobileSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-3 py-3 bg-gray-100 border-none rounded-xl text-base focus:ring-2 focus:ring-[--primary] outline-none transition-all"
-              />
-            </div>
-            <div className="max-h-80 overflow-y-auto mb-3">
-              <div className="grid grid-cols-1 gap-2">
-                {mobileSearchQuery === '' ? (
-                    <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-                        <Search className="w-12 h-12 mb-3 opacity-20" />
-                        <p className="italic text-sm text-center px-8">Inizia a digitare per cercare i piatti da aggiungere alla comanda...</p>
-                    </div>
-                ) : (
-                    menuItems
-                      .filter(item => {
-                        if (!item.available) return false;
-                        
-                        const queryTerms = mobileSearchQuery.toLowerCase().trim().split(/\s+/);
-                        const itemNameWords = item.name.toLowerCase().split(/\s+/);
-                        const categoryLower = item.category.toLowerCase();
+            
+            <div className="p-4 flex flex-col flex-1 overflow-hidden">
+              <div className="mb-2 flex items-center gap-2">
+                <span className="text-xs font-bold text-gray-600">N° portate</span>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setActiveCourse(1)} className={`px-3 py-1 rounded-lg text-sm ${activeCourse === 1 ? 'bg-[--primary] text-white' : 'bg-gray-100 text-gray-700'}`}>1</button>
+                  <button onClick={() => setActiveCourse(2)} className={`px-3 py-1 rounded-lg text-sm ${activeCourse === 2 ? 'bg-[--primary] text-white' : 'bg-gray-100 text-gray-700'}`}>2</button>
+                  <button onClick={() => setActiveCourse(3)} className={`px-3 py-1 rounded-lg text-sm ${activeCourse === 3 ? 'bg-[--primary] text-white' : 'bg-gray-100 text-gray-700'}`}>3</button>
+                </div>
+              </div>
+              <div className="relative mb-3 shrink-0">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Cerca piatto..."
+                  value={mobileSearchQuery}
+                  onChange={(e) => setMobileSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-3 py-3 bg-gray-100 border-none rounded-xl text-base focus:ring-2 focus:ring-[--primary] outline-none transition-all"
+                />
+              </div>
 
-                        return queryTerms.every(term => 
-                          itemNameWords.some(word => word.startsWith(term)) ||
-                          categoryLower.startsWith(term)
-                        );
-                      })
-                      .map(item => {
-                        const sel = mobileSelections[item.id];
-                        return (
-                          <div key={item.id} className="flex items-center justify-between p-3 border rounded-xl bg-white shadow-sm">
-                            <div className="min-w-0">
-                              <div className="font-bold text-gray-800 truncate">{item.name}</div>
-                              <div className="text-[10px] text-gray-400 uppercase tracking-wider">{item.category}</div>
-                              <div className="text-sm text-gray-500 hidden md:block">€ {item.price.toFixed(2)}</div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <button
-                                onClick={() => {
-                                  const qty = (sel?.qty || 0) - 1;
-                                  const next = { ...mobileSelections };
-                                  if (qty <= 0) {
-                                    delete next[item.id];
-                                  } else {
-                                    next[item.id] = { item, qty };
-                                  }
-                                  setMobileSelections(next);
-                                }}
-                                className="w-8 h-8 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center font-bold"
-                              >
-                                -
-                              </button>
-                              <span className="w-6 text-center font-bold text-lg">{sel?.qty || 0}</span>
-                              <button
-                                onClick={() => {
-                                  const qty = (sel?.qty || 0) + 1;
-                                  setMobileSelections({ ...mobileSelections, [item.id]: { item, qty } });
-                                }}
-                                className="w-8 h-8 rounded-full bg-[--secondary] text-white flex items-center justify-center font-bold"
-                              >
-                                +
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })
-                )}
-                {mobileSearchQuery !== '' && menuItems.filter(item => {
-                  if (!item.available) return false;
-                  const queryTerms = mobileSearchQuery.toLowerCase().trim().split(/\s+/);
-                  const itemNameWords = item.name.toLowerCase().split(/\s+/);
-                  const categoryLower = item.category.toLowerCase();
-                  return queryTerms.every(term => 
-                    itemNameWords.some(word => word.startsWith(term)) ||
-                    categoryLower.startsWith(term)
-                  );
-                }).length === 0 && (
-                  <div className="text-center text-gray-400 p-8 italic">Nessun piatto trovato</div>
-                )}
-              </div>
-            </div>
-            <div className="border-t pt-3">
-              <div className="flex justify-between items-center mb-2 hidden md:flex">
-                <span className="text-gray-600 font-medium">Articoli selezionati</span>
-                <span className="text-[--primary] font-bold">
-                  € {Object.values(mobileSelections).reduce((sum, s) => sum + s.item.price * s.qty, 0).toFixed(2)}
-                </span>
-              </div>
-              <div className="max-h-32 overflow-y-auto mb-3">
-                {Object.values(mobileSelections).length === 0 ? (
-                  <div className="text-gray-400 text-sm">Nessun articolo selezionato</div>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    {Object.values(mobileSelections).map(s => (
-                      <div key={s.item.id} className="flex justify-between text-sm">
-                        <span className="truncate">{s.item.name}</span>
-                        <span className="font-medium">{s.qty}x</span>
+              <div className="flex-1 overflow-y-auto mb-3 min-h-0 pr-1">
+                <div className="grid grid-cols-1 gap-2">
+                  {mobileSearchQuery === '' ? (
+                      <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+                          <Search className="w-10 h-10 mb-3 opacity-20" />
+                          <p className="italic text-xs text-center px-8">Cerca i piatti da aggiungere...</p>
                       </div>
-                    ))}
-                  </div>
-                )}
+                  ) : (
+                      menuItems
+                        .filter(item => {
+                          if (!item.available) return false;
+                          
+                          const queryTerms = mobileSearchQuery.toLowerCase().trim().split(/\s+/);
+                          const itemNameWords = item.name.toLowerCase().split(/\s+/);
+                          const categoryLower = item.category.toLowerCase();
+
+                          return queryTerms.every(term => 
+                            itemNameWords.some(word => word.startsWith(term)) ||
+                            categoryLower.startsWith(term)
+                          );
+                        })
+                        .map(item => {
+                          const sel = mobileCourseSelections[activeCourse][item.id];
+                          return (
+                            <div key={item.id} className="flex items-center justify-between p-3 border rounded-xl bg-white shadow-sm">
+                              <div className="min-w-0 flex-1 mr-3">
+                                <div className="font-bold text-gray-800 truncate">{item.name}</div>
+                              </div>
+                              <div className="flex items-center gap-3 shrink-0">
+                                <button
+                                  onClick={() => {
+                                    const qty = (sel?.qty || 0) - 1;
+                                    const next = { ...mobileCourseSelections[activeCourse] };
+                                    if (qty <= 0) {
+                                      delete next[item.id];
+                                    } else {
+                                      next[item.id] = { item, qty };
+                                    }
+                                    setMobileCourseSelections(prev => ({ ...prev, [activeCourse]: next }));
+                                    saveCourseDraft(activeCourse, next);
+                                  }}
+                                  className="w-8 h-8 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center font-bold"
+                                >
+                                  -
+                                </button>
+                                <span className="w-6 text-center font-bold text-lg">{sel?.qty || 0}</span>
+                                <button
+                                  onClick={() => {
+                                    const qty = (sel?.qty || 0) + 1;
+                                    const next = {
+                                      ...mobileCourseSelections[activeCourse],
+                                      [item.id]: { item, qty }
+                                    };
+                                    setMobileCourseSelections(prev => ({ ...prev, [activeCourse]: next }));
+                                    saveCourseDraft(activeCourse, next);
+                                  }}
+                                  className="w-8 h-8 rounded-full bg-[--secondary] text-white flex items-center justify-center font-bold"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })
+                  )}
+                </div>
               </div>
-              <Bottone
-                variante="primario"
-                pienaLarghezza
-                className="justify-center"
-                onClick={async () => {
-                  if (!selectedTableId) return;
-                  for (const s of Object.values(mobileSelections)) {
-                    for (let i = 0; i < s.qty; i++) {
-                      await handleAddToOrder(s.item);
+
+              <div className="border-t pt-3 shrink-0">
+                <div className="mb-2">
+                  <span className="text-gray-600 font-bold text-xs uppercase tracking-wider">Articoli selezionati</span>
+                </div>
+                <div className="max-h-32 overflow-y-auto mb-3 bg-gray-50 rounded-xl p-2 border border-gray-100">
+                  {Object.values(mobileCourseSelections[activeCourse]).length === 0 ? (
+                    <div className="text-gray-400 text-xs italic text-center py-2">Nessun articolo selezionato</div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {Object.values(mobileCourseSelections[activeCourse]).map(s => (
+                        <div key={s.item.id} className="flex justify-between items-center text-sm bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
+                          <span className="truncate font-medium flex-1 mr-2">{s.item.name}</span>
+                          <span className="font-bold text-[--primary] shrink-0 text-base">x{s.qty}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <Bottone
+                  variante="primario"
+                  pienaLarghezza
+                  className="justify-center py-3 font-bold text-lg"
+                  onClick={async () => {
+                    if (!selectedTableId) return;
+                    const selectionCounts: Record<string, number> = {};
+                    Object.values(mobileCourseSelections[activeCourse]).forEach(s => {
+                      selectionCounts[s.item.id] = (selectionCounts[s.item.id] || 0) + s.qty;
+                    });
+                    const currentCounts: Record<string, number> = {};
+                    (currentOrder?.items || []).forEach(i => {
+                      currentCounts[i.menuItemId] = (currentCounts[i.menuItemId] || 0) + i.quantity;
+                    });
+                    const allKeys = new Set<string>([
+                      ...Object.keys(selectionCounts),
+                      ...Object.keys(currentCounts)
+                    ]);
+                    let identical = true;
+                    let hasAdd = false;
+                    let hasRemove = false;
+                    allKeys.forEach(k => {
+                      const sel = selectionCounts[k] || 0;
+                      const cur = currentCounts[k] || 0;
+                      if (sel !== cur) identical = false;
+                      if (sel > cur) hasAdd = true;
+                      if (sel < cur) hasRemove = true;
+                    });
+                    if (identical) {
+                      setIsOrderInfoModalOpen(true);
+                      setTimeout(() => setIsOrderInfoModalOpen(false), 2000);
+                      return;
                     }
-                  }
-                  setMobileSelections({});
-                  setMobileModalOpen(false);
-                }}
-              >
-                Invia Comanda
-              </Bottone>
+                    if (currentOrder?.id && hasAdd && hasRemove) {
+                      try {
+                        await supabase.from('order_items').delete().eq('order_id', currentOrder.id);
+                        const { data: newOrder, error } = await supabase
+                          .from('orders')
+                          .insert([{
+                            user_id: user!.id,
+                            restaurant_id: restaurantId!,
+                            table_id: selectedTableId,
+                            status: 'active'
+                          }])
+                          .select()
+                          .single();
+                        if (error) throw error;
+                        for (const s of Object.values(mobileCourseSelections[activeCourse])) {
+                          for (let i = 0; i < s.qty; i++) {
+                            await supabase.rpc('add_item_to_order', {
+                              p_order_id: newOrder.id,
+                              p_menu_item_id: s.item.id,
+                              p_name: s.item.name,
+                              p_price: s.item.price,
+                              p_category: s.item.category
+                            });
+                          }
+                        }
+                        setOrders(prev => {
+                          const next = [...prev.filter(o => o.tableId !== selectedTableId || o.status !== 'active')];
+                          next.push({
+                            id: newOrder.id,
+                            tableId: selectedTableId,
+                            status: 'active',
+                            timestamp: Date.now(),
+                            items: Object.values(mobileCourseSelections[activeCourse]).flatMap(s =>
+                              Array.from({ length: s.qty }).map((_ , idx) => ({
+                                id: `temp-${s.item.id}-${Date.now()}-${idx}`,
+                                menuItemId: s.item.id,
+                                quantity: 1,
+                                name: s.item.name,
+                                price: s.item.price,
+                                created_at: new Date().toISOString()
+                              }))
+                            )
+                          });
+                          return next;
+                        });
+                        setIsOrderSentModalOpen(true);
+                        setTimeout(() => setIsOrderSentModalOpen(false), 2000);
+                      } catch (e) {
+                        alert("Errore nella sostituzione della comanda");
+                      }
+                    } else {
+                      for (const s of Object.values(mobileCourseSelections[activeCourse])) {
+                        const cur = currentCounts[s.item.id] || 0;
+                        const addDelta = s.qty - cur;
+                        for (let i = 0; i < addDelta; i++) {
+                          await handleAddToOrder(s.item);
+                        }
+                      }
+                      for (const k of Object.keys(currentCounts)) {
+                        const sel = selectionCounts[k] || 0;
+                        const cur = currentCounts[k] || 0;
+                        const removeDelta = cur - sel;
+                        for (let i = 0; i < removeDelta; i++) {
+                          await handleRemoveFromOrder(k);
+                        }
+                      }
+                      setIsOrderSentModalOpen(true);
+                      setTimeout(() => setIsOrderSentModalOpen(false), 2000);
+                    }
+                    if (selectedTableId) {
+                      await saveCourseDraft(activeCourse, mobileCourseSelections[activeCourse]);
+                    }
+                    if (restaurantId) {
+                      const { data: activeOrders } = await supabase
+                        .from('orders')
+                        .select(`
+                            *,
+                            order_items (*)
+                        `)
+                        .eq('restaurant_id', restaurantId)
+                        .in('status', ['active']);
+                      if (activeOrders) {
+                        const mappedOrders: Order[] = activeOrders.map((o: any) => ({
+                          id: o.id,
+                          tableId: o.table_id,
+                          status: o.status,
+                          timestamp: new Date(o.created_at).getTime(),
+                          items: (o.order_items || []).map((i: any) => ({
+                            id: i.id,
+                            menuItemId: i.menu_item_id,
+                            quantity: i.quantity,
+                            name: i.name,
+                            price: i.price,
+                            created_at: i.created_at
+                          }))
+                        }));
+                        setOrders(mappedOrders);
+                      }
+                    }
+                    setMobileModalOpen(false);
+                  }}
+                >
+                  Invia Comanda ({Object.values(mobileCourseSelections[activeCourse]).reduce((sum, s) => sum + s.qty, 0)})
+                </Bottone>
+              </div>
             </div>
           </div>
         </div>
       )}
+      <NotificaModal
+        open={isOrderSentModalOpen}
+        onClose={() => setIsOrderSentModalOpen(false)}
+        title="Ordine inviato"
+        message="La comanda è stata inviata correttamente."
+        variant="success"
+        autoCloseMs={2000}
+      />
+      <NotificaModal
+        open={isOrderInfoModalOpen}
+        onClose={() => setIsOrderInfoModalOpen(false)}
+        title="Comanda già inviata"
+        message="Gli articoli e le quantità sono uguali."
+        variant="info"
+        autoCloseMs={2000}
+      />
       <MobileStickyBar
         activeKey="ordini"
         defaultInactiveClass="bg-[--secondary] text-white"
